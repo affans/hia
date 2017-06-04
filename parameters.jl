@@ -23,10 +23,31 @@
 
     symptomaticmin = 1 ## 1 day minimum symptomatic 
     symptomaticmax = 10 
-    infaftertreatment = 2   ## after symptomatic, people get treatment -> adds 2 days of infectiousness. So if symptomatic = 1, then total days of infectiousness = 3
+    infaftertreatment = 2   ## after symptomatic, people get treatment -> adds 2 days of infectiousness. 
 
     recoveredmin = 2*365  ## two years for minimum time of staying recovered 
     recoveredmax = 5*365  ## max time of staying recovered.    
+
+    pathone_carriage_min::Float64 = 0.04
+    pathone_carriage_max::Float64 = 0.11
+    pathone_symptomatic::Float64 = 0.90
+
+    pathtwo_carriage_min::Float64 = 0.60
+    pathtwo_carriage_max::Float64 = 0.90
+    pathtwo_symptomatic::Float64 = 0.90
+    
+    paththree_carriage_min::Float64 = 0.90
+    paththree_carriage_max::Float64 = 0.98
+    paththree_symptomatic::Float64 = 0.98
+
+    pathfour_carriage_min::Float64 = 0.90
+    pathfour_carriage_max::Float64 = 0.98
+    pathfour_symptomatic::Float64 = 1
+    
+    
+
+
+
 end
 
 

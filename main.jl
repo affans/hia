@@ -12,9 +12,6 @@ include("parameters.jl")
 include("humans.jl")
 include("functions.jl")
 
-checkdailycontact(h::Array{Human}) = length(find(x -> x.dailycontact > 0, h)) 
-
-
 
 ## encapusulate the following into a main function
 P = HiaParameters(gridsize = 100000)

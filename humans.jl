@@ -1,8 +1,10 @@
-## sets up the humans
+# sets up the humans
 
 type Human 
     health::HEALTH
     swap::HEALTH
+    path::Int64
+    inv::Bool
     age::Int64      ## age in days  - 360 
     agegroup::Int64 #deprecated - dont need
     gender::GENDER
@@ -16,10 +18,10 @@ type Human
     
     ## constructor:: empty human - set defaults here
     ##  if changing, makesure to add/remove from new() function
-    Human( health = SUSC, swap = UNDEF,
+    Human( health = SUSC, swap = UNDEF, path = 0, inv = false,
            age = 0, agegroup = 0, gender = MALE,
            statetime = typemax(Int64), timeinstate = -1,
-           cohortid = 0, protectlvl = 0, protecttime = 0, meetcount = 0, dailycontact = 0) = new(health, swap, 
+           cohortid = 0, protectlvl = 0, protecttime = 0, meetcount = 0, dailycontact = 0) = new(health, swap, path, inv, 
                                age, agegroup, gender, 
                                statetime, timeinstate,
                                cohortid, protectlvl, protecttime, meetcount, dailycontact)
@@ -33,7 +35,6 @@ function initialize(h::Array{Human},P::HiaParameters)
 end
 
 function demographics(h::Array{Human}, P::HiaParameters)
-    ## get the distribution
     age_cdf = distribution_age()
     for i = 1:P.gridsize
         rn = rand()
@@ -47,38 +48,55 @@ function demographics(h::Array{Human}, P::HiaParameters)
 end
 
 
-function ageincrease(h::Array{Human}, P::HiaParameters, deathprobs)
-    ## this function increases age, and also checks for death. It also increase their timeinstate by one.
-    ## this function can be optimized. 
+function ageplusplus(h::Array{Human}, P::HiaParameters)
+    ## dprobs[1][...] male array, dprobs[2][...] female array
+    for x in h
+        ## increase age by one day 
+        x.age += 1  
+        ## assign 50% protection level to all those above 5 years old and are susceptible
+        if x.age >= 1825 && x.health == SUSC 
+            x.protectlvl = 0.50
+        end
+        ## to do: implement naturaldeath()
+    end
+end
 
-      ## dprobs[1][...] male array, dprobs[2][...] female array
-    for i = 1:P.gridsize
-        h[i].age += 1  
-        ## check for deaths using this new age
-        if h[i].age < 360  ## CHECK AT A MONTHLY BASIS? YESS!! fix this
-            ## baby is newborn, check for infant mortality
-            if rand() < dprobs[Int(h[i].gender)][1] ## first element of death distribution corresponds to the death from 0 - 12 months
-                setswap(h[i], DEAD) ## swap to dead
+function timeplusplus(h::Array{Human}, P::HiaParameters)
+    @simd for x in h ## for each human
+        x.timeinstate += 1
+        if x.timeinstate > x.statetime 
+            ## move their compartments
+            @match Symbol(x.health) begin
+                :SUSC => error("Hia Model => susc cannot expire")
+                :LAT  => begin ## latency has expired, moving to either carriage or presymptomatic, depends on age
+                            ## get their min/max carriage probs and whether they will go to invasive
+                            minp, maxp, invp  = carriageprobs(x.path, P)  ## path should've been set when they became invasive
+                            pc = rand()*(maxp - minp) + minp  ## randomly sample probability to carriage from range
+                            x.swap = rand() < pc ? CAR : SYMP                            
+                            # if the person is going to symptomatic, check if they will go to invasive
+                            if x.swap == SYMP
+                                x.inv = rand() < invp ? true : false
+                            end
+                         end
+                :CAR  => x.swap = REC
+                :SYMP => x.swap = x.inv == true ? INV : REC        ## if going to invasive, check that
+                :INV  => x.swap = REC
+                :REC  => x.swap = SUSC
+                _     => error("Hia => Health status not known to @match")
             end
-        else 
-            ## age is bigger than 1 year, check for yearly death
-            if mod(h[i].age, 365) == 0
-                ageyears = Int(h[i].age/365)
-                if rand() < dprobs[Int(h[i].gender)][ageyears]
-                    setswap(h[i], DEAD)
-                end
-            end
-        end                 
+        end
     end
 end
 
 setswap(h::Human, swapto::HEALTH) =  h.swap = h.swap == UNDEF ? swapto : h.swap ## this function correctly sets the swap for a human.
 
-
 function update(P::HiaParameters)
     ## this function updates the lattice
     swaps = find(x -> x.swap != UNDEF, humans)
-    
+
+    ## if the person is going to latent, figure out the path taken now - need to know whether they are susceptible/recovered for path taken
+
+    ## always set the swap back to zero. 
     h.health = state
     h.statetime = statetime(state, P)
     h.timeinstate = 0
@@ -86,7 +104,7 @@ function update(P::HiaParameters)
 end
 
 
-function dailycontact(h::Array{Human}, P::HiaParameters)
+function dailycontact(h::Array{Human}, P::HiaParameters, cmt::Array{Float64})
     ## goes through every human, and assigns a contact. Check for transmission. 
 
     ## filter humans by agegroup
@@ -94,15 +112,15 @@ function dailycontact(h::Array{Human}, P::HiaParameters)
     first = find(x -> x.age >= 365 && x.age < 1460, h)
     second = find(x -> x.age >= 1460 && x.age < 3285, h)    
     third = find(x -> x.age >= 3285, h)
-
     cmt = distribution_contact_transitions()  ## get the contact transmission matrix. 
+    
     for i = 1:P.gridsize
         #for each person, get a random number
         rn = rand()
         ag = agegroup(h[i].age)  #function returns 1 - 4 corresponding to row of contact matrix
-        dist = cmt[ag, :]
-        #println("human $i is age: $(h[i].age) with group: $(agegroup(h[i].age)) - distribution assigned was $dist")
+        dist = cmt[ag, :]        
         agtocontact = findfirst(x -> rn <= x, dist)
+
         if agtocontact == 1
             #println("a")
             randhuman = rand(newborns)
@@ -136,9 +154,10 @@ end
 
 function transmission(susc::Human, sick::Human, P::HiaParameters)
     ## computes the transmission probability using the baseline for a susc and a sick person. If person is carriage, there is an automatic 50% reduction in beta value.
+    ## can only make the person swap to latent!
     warn("Hia Model => Not tested -- check if incoming sick human is sick")
     trans = sick.health == CAR ? P.beta*0.5*(1 - susc.protectlvl) : P.beta*(1 - susc.protectlvl)
-    if rand() < trans
+    if rand() < trans        
         setswap(susc, LAT)
     end
 end
