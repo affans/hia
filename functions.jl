@@ -5,7 +5,24 @@ function todo()
     
 end
 
-function carriageprobs(pa::Int64, P::HiaParameters)
+function track(h::Human, i::Int64)
+    println("tracking human: $i")
+    println("...health")
+    println("       current:  $(h.health)")
+    println("       swap:     $(h.swap)")
+    println("       path:     $(h.path)")
+    println("       inv:      $(h.inv)")
+    println("       protect:  $(h.protectlvl)")
+    println("...demographics")
+    println("       age/sex:  $(h.age) / $(h.gender)")
+    println("       age(yrs): $(h.age/365)")    
+    println("       meetcnt:  $(h.meetcount)")
+    println("...model (_instate) variables")
+    println("       time:     $(h.timeinstate)")
+    println("       expiry:   $(h.statetime)")
+end
+
+function carriageprobs(pa::Integer, P::HiaParameters)
     ## get the parameters for the path integer - parameter: pa
     minprob = 0.0
     maxprob = 0.0
@@ -56,7 +73,7 @@ end
 
 
 
-function agegroup(age::Int64)
+function agegroup(age::Integer)
     ## these agegroups only applicable for contacts - used in function dailycontacts()
     @match age begin
         0:365       => 1
@@ -73,7 +90,7 @@ function statetime(state::HEALTH, P::HiaParameters)
     ##  @enum HEALTH SUSC=1 LAT=2 PRE=3 SYMP=4 INV=5 REC=6 DEAD=7 UNDEF=0
     st = 0 ## return variable
     @match Symbol(state) begin
-        :SUSC  => st = typemax(Int64)  ## no expiry for suscepitble
+        :SUSC  => st = typemax(Int32)  ## no expiry for suscepitble
         :LAT   => 
                 begin
                     d = LogNormal(P.latentshape, P.latentscale)

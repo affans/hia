@@ -3,28 +3,26 @@
 type Human 
     health::HEALTH
     swap::HEALTH
-    path::Int64
+    path::Int8
     inv::Bool
-    age::Int64      ## age in days  - 360 
-    agegroup::Int64 #deprecated - dont need
+    age::Int32      ## age in days  - 360 
     gender::GENDER
-    statetime::Int64
-    timeinstate::Int64
-    cohortid::Int64 #deprecated - dont need
-    protectlvl::Float64
-    protecttime::Int64
-    meetcount::Int64         ## total meet count. how many times this person has met someone else.    
-    dailycontact::Int64      ## not needed ?? ## who this person meets on a daily basis. 
+    statetime::Int32
+    timeinstate::Int32
+    protectlvl::Float16
+    protecttime::Int32
+    meetcount::Int32         ## total meet count. how many times this person has met someone else.    
+    dailycontact::Int32      ## not needed ?? ## who this person meets on a daily basis. 
     
     ## constructor:: empty human - set defaults here
     ##  if changing, makesure to add/remove from new() function
     Human( health = SUSC, swap = UNDEF, path = 0, inv = false,
-           age = 0, agegroup = 0, gender = MALE,
-           statetime = typemax(Int64), timeinstate = -1,
-           cohortid = 0, protectlvl = 0, protecttime = 0, meetcount = 0, dailycontact = 0) = new(health, swap, path, inv, 
-                               age, agegroup, gender, 
+           age = 0, gender = MALE,
+           statetime = typemax(Int32), timeinstate = -1,
+           protectlvl = 0, protecttime = 0, meetcount = 0, dailycontact = 0) = new(health, swap, path, inv, 
+                               age, gender, 
                                statetime, timeinstate,
-                               cohortid, protectlvl, protecttime, meetcount, dailycontact)
+                               protectlvl, protecttime, meetcount, dailycontact)
 end
 
 
@@ -90,64 +88,73 @@ end
 
 setswap(h::Human, swapto::HEALTH) =  h.swap = h.swap == UNDEF ? swapto : h.swap ## this function correctly sets the swap for a human.
 
-function update(P::HiaParameters)
-    ## this function updates the lattice
-    swaps = find(x -> x.swap != UNDEF, humans)
 
-    ## if the person is going to latent, figure out the path taken now - need to know whether they are susceptible/recovered for path taken
 
-    ## always set the swap back to zero. 
-    h.health = state
-    h.statetime = statetime(state, P)
-    h.timeinstate = 0
-    h.swap = UNDEF
+
+function update(h::Array{Human}, P::HiaParameters)
+    ## this function updates the lattice. 
+
+    ## find all humans that have a swap set
+    #swaps = find(x -> x.swap != UNDEF, humans)
+    for i in 1:P.gridsize        
+        if h[i].swap != UNDEF
+            if h[i].swap == SUSC
+                h[i].path = 0
+            end
+            if h[i].swap == LAT 
+                h[i].path = pathtaken(h[i], P) ## need to figure out which path they will take once they go out of latent. need to do this now, because the path depends on whether they were susceptible/recovered                                        
+                h[i].inv = false ## reset their invasive... (in case the person has recovered from an invasive disease from before, thus this variable would've been set to true.)                 
+                ## wwhen the person switches out of latent, this will be assigned again (see timeplusplus())
+            end    
+            ## common properties of switching compartments
+            h[i].health = h[i].swap
+            h[i].statetime = statetime(h[i].swap, P)
+            h[i].timeinstate = 0
+            h[i].swap = UNDEF
+        end
+    end
 end
 
 
-function dailycontact(h::Array{Human}, P::HiaParameters, cmt::Array{Float64})
+function dailycontact(h::Array{Human}, P::HiaParameters)
     ## goes through every human, and assigns a contact. Check for transmission. 
 
-    ## filter humans by agegroup
+    # ## filter humans by agegroup
     newborns = find(x -> x.age < 365, h)
     first = find(x -> x.age >= 365 && x.age < 1460, h)
     second = find(x -> x.age >= 1460 && x.age < 3285, h)    
     third = find(x -> x.age >= 3285, h)
     cmt = distribution_contact_transitions()  ## get the contact transmission matrix. 
     
-    for i = 1:P.gridsize
+    for x in h  ## take advantage of linear indexing
         #for each person, get a random number
         rn = rand()
-        ag = agegroup(h[i].age)  #function returns 1 - 4 corresponding to row of contact matrix
+        ag = agegroup(x.age)  #function returns 1 - 4 corresponding to row of contact matrix
         dist = cmt[ag, :]        
-        agtocontact = findfirst(x -> rn <= x, dist)
-
+        agtocontact = findfirst(y -> rn <= y, dist)
         if agtocontact == 1
-            #println("a")
             randhuman = rand(newborns)
         elseif agtocontact == 2
-            #println("b")            
             randhuman = rand(first)            
         elseif agtocontact == 3
-            #println("c")            
             randhuman = rand(second)            
         elseif agtocontact == 4
-            #println("d")            
             randhuman = rand(third)            
         else
             error("cant happen")
         end        
         ## at this point, human i and randhuman are going to contact each other.         
         ## check if transmission criteria is satisfied
-        t = (h[i].health == SUSC || h[i].health == REC) && (h[randhuman].health == CAR || h[randhuman].health == SYMP)
-        y = (h[randhuman].health == SUSC || h[randhuman].health == REC) && (h[i].health == CAR || h[i].health == SYMP)  
+        t = (x.health == SUSC || x.health == REC) && (h[randhuman].health == CAR || h[randhuman].health == SYMP)
+        y = (h[randhuman].health == SUSC || h[randhuman].health == REC) && (x.health == CAR || x.health == SYMP)  
         if t
             transmission(h[i], h[randhuman], P)
         elseif y 
             transmission(h[randhuman], h[i], P)
         end
         
-        h[i].dailycontact = randhuman
-        h[i].meetcount += 1
+        x.dailycontact = randhuman
+        x.meetcount += 1
         h[randhuman].meetcount += 1        
     end 
 end
