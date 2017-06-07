@@ -1,28 +1,44 @@
 # sets up the humans
 
 type Human 
-    health::HEALTH
-    swap::HEALTH
-    path::Int8
-    inv::Bool
-    age::Int32      ## age in days  - 360 
-    gender::GENDER
-    statetime::Int32
-    timeinstate::Int32
-    protectlvl::Float16
-    protecttime::Int32
-    meetcount::Int32         ## total meet count. how many times this person has met someone else.    
-    dailycontact::Int32      ## not needed ?? ## who this person meets on a daily basis. 
+    ## disease parameters (modified in make() function)
+    health::HEALTH     ## current health status
+    swap::HEALTH       ## swap health status (works as "last status" also - see swap())
+    path::Int8         ## the path they will take if they get sick
+    inv::Bool          ## whether this human will become invasive
+    plvl::Float32      ## protection level - 0 - 100% 
+    ptime::Int32       ## how long this protection will last - maybe not needed 
+    latcnt::Int32      ## how many times this person has become latent
+    symcnt::Int32      ## how many times this person has become symptomatic
+    invcnt::Int32      ## how many times this person has become invasive
+    timeinstate::Int32 ## days spent in current health status   
+    statetime::Int32   ## maximum amount of days spent in health status 
+    ## contact structure and demographics
+    age::Int32         ## age in days  - 365 days per year
+    gender::GENDER     ## gender - 50% male/female
+    meetcnt::Int32     ## total meet count. how many times this person has met someone else.    
+    dailycontact::Int32## not needed ?? ## who this person meets on a daily basis. 
+    ## vaccine
+    pvaccine::Bool     ## if primary vaccine is turned on
+    bvaccine::Bool     ## if booster vaccine is turned on
+    dosesgiven::Int8   ## doses given, 1 2 3 after primary
     
-    ## constructor:: empty human - set defaults here
+    # constructor:: empty human - set defaults here
     ##  if changing, makesure to add/remove from new() function
-    Human( health = SUSC, swap = UNDEF, path = 0, inv = false,
+    Human( health = SUSC, 
+           swap   = UNDEF, 
+           path   = 0, 
+           inv    = false,
+           plvl   = 0,
+           ptime  = 0,
+           latcnt = 0,
+           symcnt = 0,
+           invcnt = 0,
+           timeinstate = 0, statetime = typemax(Int32), 
            age = 0, gender = MALE,
-           statetime = typemax(Int32), timeinstate = -1,
-           protectlvl = 0, protecttime = 0, meetcount = 0, dailycontact = 0) = new(health, swap, path, inv, 
-                               age, gender, 
-                               statetime, timeinstate,
-                               protectlvl, protecttime, meetcount, dailycontact)
+           meetcnt = 0, dailycontact = 0,
+           pvaccine = false, bvaccine = false, 
+           dosesgiven = 0) = new(health, swap, path, inv, plvl, ptime, latcnt, symcnt, invcnt, timeinstate, statetime, age, gender, meetcnt, dailycontact, pvaccine, bvaccine, dosesgiven) 
 end
 
 
@@ -34,46 +50,33 @@ end
 
 function demographics(h::Array{Human}, P::HiaParameters)
     age_cdf = distribution_age()
-    for i = 1:P.gridsize
+    for x in h
         rn = rand()
         ## the distribution is index 1-based so if we get index one below, this means they are under 1 years old
         ageyear = findfirst(x -> rn <= x, age_cdf)
         ageyear = ageyear - 1 ## since distribution is 1-based
-        h[i].age =  rand(ageyear*365:ageyear*365 + 365)   ## convert to days
-        h[i].gender = rand() < 0.5 ? FEMALE : MALE
+        x.age =  rand(ageyear*365:ageyear*365 + 365)   ## convert to days
+        x.gender = rand() < 0.5 ? FEMALE : MALE
+        x.plvl = protection(x)
     end
-    return     
-end
-
-
-function ageplusplus(h::Array{Human}, P::HiaParameters)
-    ## dprobs[1][...] male array, dprobs[2][...] female array
-    for x in h
-        ## increase age by one day 
-        x.age += 1  
-        ## assign 50% protection level to all those above 5 years old and are susceptible
-        if x.age >= 1825 && x.health == SUSC 
-            x.protectlvl = 0.50
-        end
-        ## to do: implement naturaldeath()
-    end
+    return nothing
 end
 
 function timeplusplus(h::Array{Human}, P::HiaParameters)
     @simd for x in h ## for each human
         x.timeinstate += 1
-        if x.timeinstate > x.statetime 
+        if x.timeinstate >= x.statetime && x.swap == UNDEF  #
             ## move their compartments
             @match Symbol(x.health) begin
-                :SUSC => error("Hia Model => susc cannot expire")
+                :SUSC => error("Hia model => A susceptible has expired - how?")
                 :LAT  => begin ## latency has expired, moving to either carriage or presymptomatic, depends on age
                             ## get their min/max carriage probs and whether they will go to invasive
-                            minp, maxp, invp  = carriageprobs(x.path, P)  ## path should've been set when they became invasive
+                            minp, maxp, invp  = carriageprobs(x.path, P)  ## path should've been set when they became latent -- see swap() function. 
                             pc = rand()*(maxp - minp) + minp  ## randomly sample probability to carriage from range
                             x.swap = rand() < pc ? CAR : SYMP                            
                             # if the person is going to symptomatic, check if they will go to invasive
-                            if x.swap == SYMP
-                                x.inv = rand() < invp ? true : false
+                            if x.swap == SYMP && x.invcnt == 0                       
+                                    x.inv = rand() < invp ? true : false
                             end
                          end
                 :CAR  => x.swap = REC
@@ -88,88 +91,124 @@ end
 
 setswap(h::Human, swapto::HEALTH) =  h.swap = h.swap == UNDEF ? swapto : h.swap ## this function correctly sets the swap for a human.
 
+function swap(h::Human, P::HiaParameters)
+    # this function moves the human to a new compartment. This is the final update version 
 
+    # common variables for all compartments    
+    oldhealth = h.health ## need to pass into pathtaken()
+    h.health = h.swap
+    h.swap = UNDEF
+    h.timeinstate = 0
+    h.statetime = statetime(h.health, P)
+    h.inv == h.health == LAT ? false : h.inv  ## reset invasive if they are going to latent.. when they expire out of latent and (possible) swap to symp, this property will be calculated again
+    h.path = h.health == LAT ? pathtaken(oldhealth, h) : 0
+    ## get their path, path depends on protection lvl  - so always update path BEFORE protection lvl. 
+    ## ie, if the person is swappning to latent (ie, x.health = latent set above), protection() in the next line will return 0 for path taken.
+    ## slight inconvenient "feature": when transferring from REC -> SUS (ie, health = SUS, oldhealth = REC), the pathtaken is "4".. however, the person's path isnt actually determined until he moves to latent
+    h.plvl = protection(h)
 
-
-function update(h::Array{Human}, P::HiaParameters)
-    ## this function updates the lattice. 
-
-    ## find all humans that have a swap set
-    #swaps = find(x -> x.swap != UNDEF, humans)
-    for i in 1:P.gridsize        
-        if h[i].swap != UNDEF
-            if h[i].swap == SUSC
-                h[i].path = 0
-            end
-            if h[i].swap == LAT 
-                h[i].path = pathtaken(h[i], P) ## need to figure out which path they will take once they go out of latent. need to do this now, because the path depends on whether they were susceptible/recovered                                        
-                h[i].inv = false ## reset their invasive... (in case the person has recovered from an invasive disease from before, thus this variable would've been set to true.)                 
-                ## wwhen the person switches out of latent, this will be assigned again (see timeplusplus())
-            end    
-            ## common properties of switching compartments
-            h[i].health = h[i].swap
-            h[i].statetime = statetime(h[i].swap, P)
-            h[i].timeinstate = 0
-            h[i].swap = UNDEF
-        end
+    ## update individual counters, and pathtaken/protection cases.
+    if h.health == LAT   
+        h.latcnt += 1
+    elseif h.health == SYMP
+        h.symcnt += 1
+    elseif h.health == INV
+        h.invcnt += 1    
     end
 end
 
-
-function dailycontact(h::Array{Human}, P::HiaParameters)
-    ## goes through every human, and assigns a contact. Check for transmission. 
-
-    # ## filter humans by agegroup
-    newborns = find(x -> x.age < 365, h)
-    first = find(x -> x.age >= 365 && x.age < 1460, h)
-    second = find(x -> x.age >= 1460 && x.age < 3285, h)    
-    third = find(x -> x.age >= 3285, h)
-    cmt = distribution_contact_transitions()  ## get the contact transmission matrix. 
-    
-    for x in h  ## take advantage of linear indexing
-        #for each person, get a random number
-        rn = rand()
-        ag = agegroup(x.age)  #function returns 1 - 4 corresponding to row of contact matrix
-        dist = cmt[ag, :]        
-        agtocontact = findfirst(y -> rn <= y, dist)
-        if agtocontact == 1
-            randhuman = rand(newborns)
-        elseif agtocontact == 2
-            randhuman = rand(first)            
-        elseif agtocontact == 3
-            randhuman = rand(second)            
-        elseif agtocontact == 4
-            randhuman = rand(third)            
+function protection(h::Human)
+    ## this assigns the proper protection level - based on health, recovery, age, and vaccine combinations
+    retval = 0.0
+    ## calculates protection level. protection only makes sense for recovered or 
+    if h.health == REC 
+        retval = 0.90  ## fixed protection level for recovery
+    elseif h.health == SUSC 
+        ## have they been sick? ie, are the coming into susceptible after recovery period
+        if h.latcnt >= 1  
+            ## they have been atleast sick once, so automatic 50% protection
+            retval = 0.50
         else
-            error("cant happen")
-        end        
-        ## at this point, human i and randhuman are going to contact each other.         
-        ## check if transmission criteria is satisfied
-        t = (x.health == SUSC || x.health == REC) && (h[randhuman].health == CAR || h[randhuman].health == SYMP)
-        y = (h[randhuman].health == SUSC || h[randhuman].health == REC) && (x.health == CAR || x.health == SYMP)  
-        if t
-            transmission(h[i], h[randhuman], P)
-        elseif y 
-            transmission(h[randhuman], h[i], P)
+            ## they have never been sick, check age and vaccine status
+            if h.age < 1825 && !h.pvaccine  
+                retval = 0.0  ## <5, unvaccincated
+            elseif h.age < 1825 && h.dosesgiven == 1
+                retval = 0.50 ## <5, after primary dose 1
+            elseif h.age < 1825 && h.dosesgiven == 2 
+                retval = 0.80 ## <5, after primary dose 2
+            elseif h.age < 1825 && h.dosesgiven == 3 && h.bvaccine == false
+                retval = 0.85
+            elseif h.age < 1825 && h.dosesgiven == 3 && h.bvaccine == true 
+                retval = rand()*(0.95 - 0.85)+0.85
+            elseif h.age < 1825 
+                track(h, 1)
+                error("protection level not applied")
+            else 
+                retval = 0.5
+            end
+        end    
+    else 
+        ## they are in a compartment other than susc/rec.. no need for protection level
+        retval = 0.0
+    end
+    return retval
+end
+
+
+function update(h::Array{Human}, P::HiaParameters, DC::DataCollection, time::Int64)
+    ## this function updates the lattice, counts incidence data, increases age, and calculates death
+    ## get the death distribution.
+    #pdm, pdf = distribution_ageofdeath()  ## distribution of deaths, do we need this every function?
+    #dprobs = [pdm, pdf]
+
+    @unpack lat, car, sym, inv, rec = DC ## unpack datacollection vectors 
+    for x in h 
+        x.age += 1 
+        if x.age == 1825 ## 5 year mark, if susceptible, booster protection will expire and person will go to 0.5 protection level
+            x.plvl = protection(x)
         end
-        
-        x.dailycontact = randhuman
-        x.meetcount += 1
-        h[randhuman].meetcount += 1        
-    end 
+        if x.swap != UNDEF
+            ## collect our data
+            if x.swap == LAT 
+                lat[time] += 1
+            elseif x.swap == CAR
+                car[time] += 1
+            elseif x.swap == SYMP
+                sym[time] += 1
+            elseif x.swap == INV
+                inv[time] += 1
+            elseif x.swap == REC
+                rec[time] += 1
+            end    
+            ## apply the swap function
+            swap(x, P)
+        end
+    end
 end
 
 function transmission(susc::Human, sick::Human, P::HiaParameters)
     ## computes the transmission probability using the baseline for a susc and a sick person. If person is carriage, there is an automatic 50% reduction in beta value.
     ## can only make the person swap to latent!
-    warn("Hia Model => Not tested -- check if incoming sick human is sick")
-    trans = sick.health == CAR ? P.beta*0.5*(1 - susc.protectlvl) : P.beta*(1 - susc.protectlvl)
+    if (sick.health != CAR) && (sick.health != SYMP) && (sick.health != PRE)
+        error("Hia Model => transmission() -- sick person is not actually sick")
+    end
+    ## if they are carriage or presymptomatic - apply a 50% reduction. 
+    trans = (sick.health == CAR || sick.health == PRE) ? P.beta*0.5*(1 - susc.plvl) : P.beta*(1 - susc.plvl)
     if rand() < trans        
         setswap(susc, LAT)
     end
 end
 
 
+function insertrandom(h::Array{Human}, P::HiaParameters, s::HEALTH)
+    i = rand(1:P.gridsize) ## select a random human
+    # set the swap and run the update functiona manually
+    setswap(h[i], s)    
+    swap(h[i], P)
+    println("random human inserted at location $i")
+    track(h[i], i)
+    return i
+end
 
 
 function test()
