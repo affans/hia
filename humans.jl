@@ -76,7 +76,7 @@ function timeplusplus(h::Array{Human}, P::HiaParameters)
                             x.swap = rand() < pc ? CAR : SYMP                            
                             # if the person is going to symptomatic, check if they will go to invasive
                             if x.swap == SYMP && x.invcnt == 0                       
-                                    x.inv = rand() < invp ? true : false
+                                    x.inv = rand() < (1 - invp) ? true : false
                             end
                          end
                 :CAR  => x.swap = REC
@@ -90,6 +90,14 @@ function timeplusplus(h::Array{Human}, P::HiaParameters)
 end
 
 setswap(h::Human, swapto::HEALTH) =  h.swap = h.swap == UNDEF ? swapto : h.swap ## this function correctly sets the swap for a human.
+
+function newborn()
+    a = Human()
+    a.gender = rand() < 0.5 ? FEMALE : MALE
+    a.plvl = protection(a)
+    return a
+end
+
 
 function swap(h::Human, P::HiaParameters)
     # this function moves the human to a new compartment. This is the final update version 
@@ -115,6 +123,7 @@ function swap(h::Human, P::HiaParameters)
     elseif h.health == INV
         h.invcnt += 1    
     end
+    return nothing
 end
 
 function protection(h::Human)
@@ -162,26 +171,33 @@ function update(h::Array{Human}, P::HiaParameters, DC::DataCollection, time::Int
     #dprobs = [pdm, pdf]
 
     @unpack lat, car, sym, inv, rec = DC ## unpack datacollection vectors 
-    for x in h 
-        x.age += 1 
-        if x.age == 1825 ## 5 year mark, if susceptible, booster protection will expire and person will go to 0.5 protection level
-            x.plvl = protection(x)
+    for i in 1:P.gridsize 
+        h[i].age += 1
+        if mod(h[i].age, 365) == 0
+            ageyears = Int(h[i].age/365)
+            if rand() < distribution_ageofdeath(ageyears, h[i].gender)
+                h[i] = newborn()
+            end
+        end      
+
+        if h[i].age == 1825 ## 5 year mark, if susceptible, booster protection will expire and person will go to 0.5 protection level
+            h[i].plvl = protection(h[i])
         end
-        if x.swap != UNDEF
+        if h[i].swap != UNDEF
             ## collect our data
-            if x.swap == LAT 
+            if h[i].swap == LAT 
                 lat[time] += 1
-            elseif x.swap == CAR
+            elseif h[i].swap == CAR
                 car[time] += 1
-            elseif x.swap == SYMP
+            elseif h[i].swap == SYMP
                 sym[time] += 1
-            elseif x.swap == INV
+            elseif h[i].swap == INV
                 inv[time] += 1
-            elseif x.swap == REC
+            elseif h[i].swap == REC
                 rec[time] += 1
             end    
             ## apply the swap function
-            swap(x, P)
+            swap(h[i], P)
         end
     end
 end
@@ -230,3 +246,4 @@ function test()
 
 end
     
+

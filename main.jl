@@ -3,59 +3,70 @@ using Match
 using Distributions
 using StatsBase
 using DataArrays, DataFrames
-#using ProgressMeter
+using ProgressMeter
+using Gadfly
+
 #using PmapProgressMeter
 
-include("distributions.jl")
 include("parameters.jl")
+include("distributions.jl")
 include("humans.jl")
 include("interaction.jl")
 include("vaccine.jl")
 include("functions.jl")
 
-
-## encapusulate the following into a main function
-P = HiaParameters(gridsize = 100000)
-DC = DataCollection(P.simtime) ## initialize data collection 
-humans = Array{Human}(P.gridsize);
-initialize(humans, P)
-demographics(humans, P)
-tracking = insertrandom(humans, P, LAT)
-
-
-@time dailycontact(humans, P)
-@time timeplusplus(humans, P)
-@time update(humans, P, DC, 1)
-track(humans[tracking], tracking)
-find(x -> x.health != SUSC, humans)
-find(x -> x.health == INV, humans)
-
-
-function main(simulationnumber::Int64)
-    ## comment out after
-    P = HiaParameters(gridsize = 100000)
+function main(simulationnumber::Int64, P::HiaParameters)
+   
     DC = DataCollection(P.simtime)
 
+    ##setup progress bar
+    progress = Progress(P.simtime)
 
     ## setup human grid 
+  
     humans = Array{Human}(P.gridsize);
     initialize(humans, P)
     demographics(humans, P)
 
-    ## introduce random latent
-    setswap(humans[rand(1:P.gridsize)], LAT)
-    ## force the system to update
-    update(humans, P, DC, 1)  ## this adds an extra latent into data collection
-
+    ## random latent human
+    tracking = insertrandom(humans, P, LAT)
 
     ## main time loop - time unit is months
     for time = 1:P.simtime
-        ageplusplus(humans, P) 
+        dailycontact(humans, P)            
         timeplusplus(humans, P)   
-        dailycontact(humans, P)    
         update(humans, P, DC, time)
+        next!(progress)
     end
     return humans, DC 
 end
+P = HiaParameters(simtime = 3650, gridsize = 100000)
+latavg = zeros(Float64, P.simtime)
+invavg = zeros(Float64, P.simtime)
+symavg = zeros(Float64, P.simtime)
+caravg = zeros(Float64, P.simtime)
+
+for i = 1:2
+    println("running sim $i")
+    h, dc = main(1, P)
+    @unpack lat, car, sym, inv, rec = dc ## unpack datacollection vectors
+    latavg += lat 
+    invavg += inv
+    symavg += sym
+    caravg += car
+end
+
+    
+a = map(x -> x.meetcnt, h)
+
+ 
+cuminv = cumsum(latavg/2)
 
 
+gg = map(x -> x.age, h)
+gg2 = map(x -> x.age, humans)
+plot(x=gg2, Geom.histogram)
+plot(x=1:365*10, y=symavg/2)
+
+symavg1 = symavg/2
+plot(x=365*3:365*7, y=symavg1[365*3:365*7])

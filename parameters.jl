@@ -6,10 +6,16 @@
 ## main system parameters
 @with_kw immutable HiaParameters @deftype Int32
     # general parameters
-    simtime = 5*10       ## time of simulation 40 years in days
+    simtime = 365       ## time of simulation 40 years in days
     gridsize = 100000   ## size of population 
     inital_latent = 1   ## initial prevalence
-    beta::Float32 = 0.25
+    
+    ## four betas, corresponding to jackson matrix age groups. 
+    betaone::Float32 = 0.07
+    betatwo::Float32 = 0.05
+    betathree::Float32 = 0.05
+    betafour::Float32 = 0.05
+    
     
     latentshape::Float64 = 0.588
     latentscale::Float64 = 0.458

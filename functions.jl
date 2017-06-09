@@ -1,6 +1,6 @@
 
 function todo()
-    warn("Hia model => calculate probability distribution for death, and implement code")
+    warn("Hia model => √ calculate probability distribution for death, and implement code")
     warn("Hia model => update pathtaken() when vaccine is implemented")    
     warn("Hia model => remove find functions, and optimize - demographics")
     warn("Hia model => check if dosesgiven > 0 => pvaccine == true.")
@@ -9,6 +9,7 @@ function todo()
     warn("Hia model => √ presymptomatic is also infectious - reduction 50% - done preliminary")
     warn("Hia model => √ if invasive before, always mark as false")   
     warn("Hia model => Implement death in invasive compartment")
+    warn("Hia model => √ Use four beta values instead of one")
 end
 
 function track(h::Human, i::Int64)
@@ -68,7 +69,7 @@ function pathtaken(oldhealth::HEALTH, h::Human)
     ## the human is already latent at this point... thats why we pass in 
     ## `oldhealth` to see what path they will take. 
     st = 0  
-    println("pathtaken(): oldhealth = $oldhealth")  
+    #rintln("pathtaken(): oldhealth = $oldhealth")  
     if oldhealth == REC 
         # person got sick while in recovery period, fixed path 4
         st = 4

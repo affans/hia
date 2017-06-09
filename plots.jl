@@ -5,3 +5,7 @@ function plot_agedistribution(humans::Array{Human})
     find(x -> x == 0, allages)
     plot(x = allages, Geom.histogram)
 end
+
+function plottest()
+
+end
