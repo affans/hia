@@ -155,6 +155,6 @@ function distribution_contact_transitions()
 #           0.3503 0.6051 0.9236 1.0
 #           0.0702 0.5313 0.9837 1.0
 #           0.1647 0.3293 0.5719 1.0]
-    return cmat
+    return mat, cmat
 end
 

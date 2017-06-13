@@ -10,12 +10,13 @@
     gridsize = 100000   ## size of population 
     inital_latent = 1   ## initial prevalence
     
-    ## four betas, corresponding to jackson matrix age groups. 
-    betaone::Float32 = 0.07
-    betatwo::Float32 = 0.05
-    betathree::Float32 = 0.05
-    betafour::Float32 = 0.05
-    
+    ## four betas, corresponding to CDC (U shaped incidence data) age groups. 
+    betaone::Float32 = 0.05    ## 0-2
+    betatwo::Float32 = 0.04    ##  2-5
+    betathree::Float32 = 0.03  ## 5-10, 60+
+    betafour::Float32 = 0.02   ## 10-60
+    carriagereduction::Float32 = 0.5
+    ## 1990 - 2017 - 27 years,  
     
     latentshape::Float64 = 0.588
     latentscale::Float64 = 0.458
@@ -67,8 +68,9 @@ type DataCollection  ## data collection type.
     sym::Array{Int64}
     inv::Array{Int64}
     rec::Array{Int64}
-    DataCollection(size::Integer) = new(zeros(Int64, size), zeros(Int64, size), zeros(Int64, size),
-                        zeros(Int64, size), zeros(Int64, size))
+    ## size x 5 matrix.. 5 because we have five "beta" agegroups. 
+    DataCollection(size::Integer) = new(zeros(Int64, size, 5), zeros(Int64, size, 5), zeros(Int64, size, 5),
+                        zeros(Int64, size, 5), zeros(Int64, size, 5))
 end
 
 

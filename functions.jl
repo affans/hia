@@ -10,6 +10,11 @@ function todo()
     warn("Hia model => √ if invasive before, always mark as false")   
     warn("Hia model => Implement death in invasive compartment")
     warn("Hia model => √ Use four beta values instead of one")
+    warn("Hia model => think of a way to implement changing age distribution")
+    warn("Hia model => algorithm to track a human")
+    warn("Hia model => profile main() and check bottlenecks")
+    warn("Hia model => verify age brackets for contact matrix")
+    warn("Hia model => clean up cmt-ag variables in main()")  
 end
 
 function track(h::Human, i::Int64)
@@ -101,8 +106,6 @@ function pathtaken(oldhealth::HEALTH, h::Human)
         end
     else 
         st = 0
-        #track(h, 1)
-        #error("Hia model => pathtaken() - human.health is not SUSC or REC, how did they become latent?")
     end   
     return st
 end
@@ -112,10 +115,10 @@ end
 function agegroup(age::Integer)
     ## these agegroups only applicable for contacts - used in function dailycontacts()
     @match age begin
-        0:365       => 1
-        366:1460    => 2
-        1461:3285   => 3
-        3285:36501  => 4
+        0:365       => 1  # 0 - 1  ## completed first year
+        366:1460    => 2  # 2 - 4  ## completed upto 4 years
+        1461:3285   => 3  # 5- 10  ## starting 5th year, completed 10 years
+        3285:36501  => 4  # 10+
         _           => error("Hia Model => age too large in agegroup()")
     end
 end
@@ -147,3 +150,28 @@ function statetime(state::HEALTH, P::HiaParameters)
     return st
 end
 
+
+
+function beta_agegroup(age::Integer)
+    ## returns one of the beta values from the parameter list
+
+    ## If: Changing the number (or even values of the age group), check datacollection vectors.
+    ## for example in human.jl, update(), DC vectors are updated by latent[dayofsim, AGEGROUP] +=1 
+    @match age begin
+        0:364         => 1     # 0 - 1
+        365:1824      => 2     # 2 - 5 
+        1825:3649     => 3     # 5 - 10
+        3650:21899    => 4     # 10 - 60
+        21900:40000   => 5     # 60 +         
+        _           => error("Hia Model => age too large in agegroup()")
+    end
+end
+
+function insertrandom(h::Array{Human}, P::HiaParameters, s::HEALTH)
+    i = rand(1:P.gridsize) ## select a random human
+    # set the swap and run the update functiona manually
+    setswap(h[i], s)    
+    swap(h[i], P)
+    return i
+end
+# 
