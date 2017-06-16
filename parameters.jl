@@ -1,5 +1,5 @@
 ## main system enums
-@enum HEALTH SUSC LAT CAR PRE SYMP INV REC DEAD UNDEF
+@enum HEALTH SUSC LAT CAR PRE SYMP INV REC DEAD DEADINV UNDEF
 @enum GENDER MALE=1 FEMALE=2
 
 
@@ -7,6 +7,7 @@
 @with_kw immutable HiaParameters @deftype Int32
     # general parameters
     simtime = 365       ## time of simulation 40 years in days
+    vaccinetime = 1825  ## 5 years of vaccine time
     gridsize = 100000   ## size of population 
     inital_latent = 1   ## initial prevalence
     
@@ -39,6 +40,8 @@
     invasivemin = 6
     invasivemax = 12
 
+    casefatalityratio::Float64 = 0.091 ## case fatality ratios
+
     ## path one
     pathone_carriage_min::Float64 = 0.04
     pathone_carriage_max::Float64 = 0.11
@@ -60,6 +63,10 @@
     pathfour_symptomatic::Float64 = 1.0
 
     ## primary dosage at 2, 4, 6 months
+    doseonetime    = 60   ## 2 months - 60 days, 
+    dosetwotime    = 120 
+    dosethreetime  = 180
+    boostertime    = 450  ## booster given at 15 months.      
 end
 
 type DataCollection  ## data collection type.
@@ -68,9 +75,10 @@ type DataCollection  ## data collection type.
     sym::Array{Int64}
     inv::Array{Int64}
     rec::Array{Int64}
+    deadn::Array{Int64}
+    deadi::Array{Int64}
     ## size x 5 matrix.. 5 because we have five "beta" agegroups. 
-    DataCollection(size::Integer) = new(zeros(Int64, size, 5), zeros(Int64, size, 5), zeros(Int64, size, 5),
-                        zeros(Int64, size, 5), zeros(Int64, size, 5))
+    DataCollection(size::Integer) = new(zeros(Int64, size, 5), zeros(Int64, size, 5), zeros(Int64, size, 5), zeros(Int64, size, 5), zeros(Int64, size, 5), zeros(Int64, size, 5), zeros(Int64, size, 5))
 end
 
 

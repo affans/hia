@@ -46,18 +46,35 @@ function processresults_ag(agegroup, numofdays, numofsims, results)
     cm = Matrix{Int64}(numofdays, numofsims)
     sm = Matrix{Int64}(numofdays, numofsims)
     im = Matrix{Int64}(numofdays, numofsims)
-    rm = Matrix{Int64}(numofdays, numofsims)
+    rm = Matrix{Int64}(numofdays, numofsims)    
+    dn = Matrix{Int64}(numofdays, numofsims) ## dead natural
+    di = Matrix{Int64}(numofdays, numofsims) ## dead invasive
+    
 
-    @showprogress 1 "......processing simulation" for i = 1:length(results)  # for each simulation
-      dc = results[i]                   ## get the DC part of the results for each simulation
-      @unpack lat, car, sym, inv, rec = dc ## unpack datacollection vectors
+    ## group counts - number of rows - 5 for 5 groups
+    grpcnts = zeros(Int64, 5, numofsims)
+
+    for i = 1:length(results)  # for each simulation
+      dc = results[i][2]                   ## get the DC part of the results for each simulation
+      @unpack lat, car, sym, inv, rec, deadn, deadi = dc ## unpack datacollection vectors
       ## these DC variables are matrices of size numofdays x 5 (where 5 is the number of agegroups)
 
       lm[:, i] = lat[:, agegroup] 
       cm[:, i] = car[:, agegroup]
       sm[:, i] = sym[:, agegroup]
       im[:, i] = inv[:, agegroup]
-      rm[:, i] = rec[:, agegroup]         
+      rm[:, i] = rec[:, agegroup]
+      dn[:, i] = deadn[:, agegroup]
+      di[:, i] = deadi[:, agegroup]
+      
+
+      h = results[i][1] 
+      grpcnts[1, i] = length(find(x -> x.agegroup == 1, h))
+      grpcnts[2, i] = length(find(x -> x.agegroup == 2, h))
+      grpcnts[3, i] = length(find(x -> x.agegroup == 3, h))
+      grpcnts[4, i] = length(find(x -> x.agegroup == 4, h))
+      grpcnts[5, i] = length(find(x -> x.agegroup == 5, h))
+      
     end
     dirname = string("Ag", agegroup)
     if !isdir(dirname) 
@@ -68,6 +85,10 @@ function processresults_ag(agegroup, numofdays, numofsims, results)
     writedlm(string(dirname, "/symptomatic.dat"), sm)
     writedlm(string(dirname, "/invasive.dat"), im)
     writedlm(string(dirname, "/recovered.dat"), rm)
+    writedlm(string(dirname, "/deadnatural.dat"), dn)
+    writedlm(string(dirname, "/deadinvasive.dat"), di)
+    
+    writedlm(string("groupcounts.dat"), grpcnts)
 end
 
 function runprofile()
@@ -80,52 +101,12 @@ function runprofile()
     ProfileView.view()            
 end
 
-function processresults_DEPRECATED(results)    
-    for sim = 1:length(results) ## go through each sim
-        println("processing simulation $sim")
-  
-
-        DC = results[i][2] ## get the DC variables
-        @unpack lat, car, sym, inv, rec = dc ## unpack datacollection vectors
-    
-        for i = 1:5 ## 5 corresponds to the number of columns in DC, which corresponds to the number of beta_agegroups
-            println("...processing agegroup $i")
-            
-            df = DataFrame()
-            df[:lat] = lat[:, i]
-            df[:car] = car[:, i]
-            df[:sym] = sym[:, i]
-            df[:inv] = inv[:, i]
-            df[:rec] = rec[:, i]
-            fname = string("ag-", i, "sim-" ,sim, ".dat")
-            writetable(fname, df, separator=',')
-        end
-    end
-end
-
-function writetofile_deprecated(results)
-  ##processng of results
-  println("writing data to file...")
-  for i=1:length(results)
-    dc = results[i][2]
-    @unpack lat, car, sym, inv, rec = dc ## unpack datacollection vectors
-    df = DataFrame()
-    df[:lat] = lat
-    df[:car] = car
-    df[:sym] = sym
-    df[:inv] = inv
-    df[:rec] = rec
-    fname = string("simulation-" ,i, ".dat")
-    writetable(fname, df, separator=',')
-  end
-end  
-
-@everywhere P = HiaParameters(simtime = 30*365, betaone=0.05, betatwo=0.04, betathree=0.03, betafour = 0.02)
-results = runmain_parallel(50, P);
+@everywhere P = HiaParameters(simtime = 30*365, betaone=0.045, betatwo=0.04, betathree=0.03, betafour = 0.075)
+results = runmain_parallel(200, P);
 
 # function scratch()
-#   P = HiaParameters(simtime = 10, gridsize = 100000)
-#   results = main(1, P, nothing)
+#  P = HiaParameters(simtime = 100, gridsize = 100000)
+#   results = main(1, P, x -> x + 1)
 #   DC = DataCollection(P.simtime)
 
 

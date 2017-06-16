@@ -15,6 +15,8 @@ function todo()
     warn("Hia model => profile main() and check bottlenecks")
     warn("Hia model => verify age brackets for contact matrix")
     warn("Hia model => clean up cmt-ag variables in main()")  
+    warn("Hia model => clean up bins variables in main()")  
+    
 end
 
 function track(h::Human, i::Int64)
@@ -32,7 +34,6 @@ function track(h::Human, i::Int64)
     println("       time:     $(h.timeinstate)")
     println("       expiry:   $(h.statetime)")
     println("...vaccine")
-    println("       primary:  $(h.pvaccine)")
     println("       booster:  $(h.bvaccine)")
     println("       # doses:  $(h.dosesgiven)")
     
@@ -86,7 +87,7 @@ function pathtaken(oldhealth::HEALTH, h::Human)
                 st = 1
             elseif h.plvl == 0.50
                 st = 2
-            elseif h.plvl > 0.50 
+            elseif h.plvl > 0.50 ### implies primary doses have been given
                 if h.bvaccine 
                     st = 4
                 else 
@@ -110,6 +111,46 @@ function pathtaken(oldhealth::HEALTH, h::Human)
     return st
 end
 
+
+function protection(h::Human)
+    ## this assigns the proper protection level - based on health, recovery, age, and vaccine combinations
+    ## see notes for details, and parameter file for references.
+    ## note- this assigns their protection level according to their CURRENT health and not their swap. 
+
+    retval = 0.0 
+    ## calculates protection level. protection only makes sense for recovered or 
+    if h.health == REC 
+        retval = 0.90  ## fixed protection level for recovery
+    elseif h.health == SUSC 
+        ## have they been sick? ie, are the coming into susceptible after recovery period
+        if h.latcnt >= 1  
+            ## they have been atleast sick once, so automatic 50% protection
+            retval = 0.50
+        else
+            ## they have never been sick, check age and vaccine status
+            if h.age < 1825 && !h.pvaccine  
+                retval = 0.0  ## <5, unvaccincated
+            elseif h.age < 1825 && h.dosesgiven == 1
+                retval = 0.50 ## <5, after primary dose 1
+            elseif h.age < 1825 && h.dosesgiven == 2 
+                retval = 0.80 ## <5, after primary dose 2
+            elseif h.age < 1825 && h.dosesgiven == 3 && h.bvaccine == false
+                retval = 0.85
+            elseif h.age < 1825 && h.dosesgiven == 3 && h.bvaccine == true 
+                retval = rand()*(0.95 - 0.85)+0.85
+            elseif h.age < 1825 
+                track(h, 1)
+                error("protection level not applied")
+            else ## they are over 5 years old, automatic 0.5 -- if they have booster, it will expire. 
+                retval = 0.5
+            end
+        end    
+    else 
+        ## they are in a compartment other than susc/rec.. no need for protection level
+        retval = 0.0
+    end
+    return retval
+end
 
 
 function agegroup(age::Integer)
@@ -174,4 +215,3 @@ function insertrandom(h::Array{Human}, P::HiaParameters, s::HEALTH)
     swap(h[i], P)
     return i
 end
-# 

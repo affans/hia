@@ -1,6 +1,3 @@
-function vaccinecheck(h::Array{Human}, P::HiaParameters)
-
-end
 
 function primary(h::Human)
   ## this function turns on primary vaccination
@@ -14,7 +11,7 @@ function dose(h::Human)
     if h.dosesgiven > 3 
       error("Hia model => more than three primary doses given")
     end
-    h.plvl = protection(h)
+    h.plvl = protection(h)  ## reapply protection level. 
   end
 end
 
