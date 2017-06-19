@@ -98,7 +98,7 @@ function pathtaken(oldhealth::HEALTH, h::Human)
                 error("Hia model => pathtaken() combination not found")
             end
         else
-            # age > 5, and a susceptible - (either susceptible by birth or susceptible by recovery)
+            # age >= 5, and a susceptible - (either susceptible by birth or susceptible by recovery)
             if h.age > 3650 && h.age < 21900
                 st = 3 
             else 
@@ -164,12 +164,12 @@ function agegroup(age::Integer)
     end
 end
 
-function statetime(state::HEALTH, P::HiaParameters)
+function statetime(x::Human, P::HiaParameters)
     ## this returns the statetime for everystate
     ## match dosnt work with ENUMS, convert to Int
     ##  @enum HEALTH SUSC=1 LAT=2 PRE=3 SYMP=4 INV=5 REC=6 DEAD=7 UNDEF=0
     st = 0 ## return variable
-    @match Symbol(state) begin
+    @match Symbol(x.health) begin
         :SUSC  => st = typemax(Int32)  ## no expiry for suscepitble
         :LAT   => 
                 begin
@@ -183,7 +183,18 @@ function statetime(state::HEALTH, P::HiaParameters)
                     d = Poisson(P.symptomaticmean)
                     st = max(P.symptomaticmin, min(rand(d), P.symptomaticmax)) + P.infaftertreatment
                 end
-        :INV   => st = rand(P.invasivemin:P.invasivemax)
+        :INV   =>begin
+                    if x.hosp 
+                        if x.invdeath
+                            d = Poisson(P.invasive_hospital_mean_death)
+                            st = max(P.invasive_hospital_min_death, min(Int(ceil(rand(d))), P.invasive_hospital_max_death))                            
+                        else 
+                            st = rand(P.invasive_hospital_min_nodeath:P.invasive_hospital_max_nodeath)
+                        end
+                    else 
+                        st = P.invasive_nohospital
+                    end
+                 end       
         :REC   => st = rand(P.recoveredmin:P.recoveredmax)
         :DEAD  => error("Hia model =>  not implemented")        
         _   => throw("Hia model => statetime passed in non-health enum")

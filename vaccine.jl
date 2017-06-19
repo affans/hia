@@ -1,7 +1,7 @@
 
 function primary(h::Human)
-  ## this function turns on primary vaccination
-  h.pvaccine = true
+  ## this function turns on primary vaccination  
+  h.pvaccine = rand() < 0.95 ? true : false
 end
 
 function dose(h::Human)
@@ -15,14 +15,11 @@ function dose(h::Human)
   end
 end
 
-function booster(h::Human, P::HiaParameters)
+function booster(h::Human)
     ## vaccine changes protection level
     ## turn on the primary variable
     if h.dosesgiven == 3
-        h.bvaccine = true
+        h.bvaccine = rand() < 0.90 ? true : false
         h.plvl = protection(h)
-    else    
-        warn("can not turn on booster - setting bvaccine = false")
-        h.bvaccine = false
-    end    
+    end
 end

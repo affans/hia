@@ -1,5 +1,5 @@
 ## main system enums
-@enum HEALTH SUSC LAT CAR PRE SYMP INV REC DEAD DEADINV UNDEF
+@enum HEALTH SUSC LAT CAR PRE SYMP INV REC DEAD UNDEF
 @enum GENDER MALE=1 FEMALE=2
 
 
@@ -7,7 +7,7 @@
 @with_kw immutable HiaParameters @deftype Int32
     # general parameters
     simtime = 365       ## time of simulation 40 years in days
-    vaccinetime = 1825  ## 5 years of vaccine time
+    vaccinetime = 1825  ## 5 years of vaccine time - runs AFTER the simtime.
     gridsize = 100000   ## size of population 
     inital_latent = 1   ## initial prevalence
     
@@ -37,8 +37,16 @@
     recoveredmin = 2*365  ## two years for minimum time of staying recovered 
     recoveredmax = 5*365  ## max time of staying recovered.    
 
-    invasivemin = 6
-    invasivemax = 12
+    invasive_nohospital = 10 ## fixed 10 days .. duration of treatment. s
+        
+    invasive_hospital_min_nodeath = 8    ## if no death is marked for invasive, 
+    invasive_hospital_max_nodeath = 12   ##  length 8 - 12 days
+
+    invasive_hospital_min_death = 1      ## if marked for death, 
+    invasive_hospital_max_death = 10     ## length of hospital stay = Poisson(4)
+    invasive_hospital_mean_death = 4     ## with min/max 1/10 - chosen so that 25% of hospitalizion length stay is 2 days - based on data 
+
+    prob_of_hospitalization::Float64 = 0.90       ## probability of going to hospital when turning invasive
 
     casefatalityratio::Float64 = 0.091 ## case fatality ratios
 
@@ -67,6 +75,14 @@
     dosetwotime    = 120 
     dosethreetime  = 180
     boostertime    = 450  ## booster given at 15 months.      
+
+    ## costs 
+    treatmentcost = 0
+    hospitalcost  = 0
+    disability_minorcost = 0 
+    disability_majorcost = 0
+    productivitycost = 0
+
 end
 
 type DataCollection  ## data collection type.

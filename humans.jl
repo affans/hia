@@ -6,6 +6,7 @@ type Human
     swap::HEALTH       ## swap health status (works as "last status" also - see swap())
     path::Int8         ## the path they will take if they get sick
     inv::Bool          ## whether this human will become invasive
+    hosp::Bool         ## whether this human will become hospitalized
     invdeath::Bool     ## whether this human is invasive and will die
     plvl::Float32      ## protection level - 0 - 100% 
     ptime::Int32       ## how long this protection will last - maybe not needed 
@@ -30,7 +31,7 @@ type Human
     Human( health = SUSC, 
            swap   = UNDEF, 
            path   = 0, 
-           inv    = false, invdeath = false,
+           inv    = false, hosp = false, invdeath = false,
            plvl   = 0,
            ptime  = 0,
            latcnt = 0,
@@ -40,7 +41,7 @@ type Human
            age = 0, agegroup = 0, gender = MALE,
            meetcnt = 0, dailycontact = 0,
            pvaccine = false, bvaccine = false, 
-           dosesgiven = 0) = new(health, swap, path, inv, invdeath, plvl, ptime, latcnt, symcnt, invcnt, timeinstate, statetime, age, agegroup, gender, meetcnt, dailycontact, pvaccine, bvaccine, dosesgiven) 
+           dosesgiven = 0) = new(health, swap, path, inv, hosp, invdeath, plvl, ptime, latcnt, symcnt, invcnt, timeinstate, statetime, age, agegroup, gender, meetcnt, dailycontact, pvaccine, bvaccine, dosesgiven) 
 end
 
 function initialize(h::Array{Human},P::HiaParameters)
@@ -73,6 +74,7 @@ function newborn(h::Human)
     h.swap   = UNDEF
     h.path   = 0 
     h.inv    = false
+    h.hosp   = false
     h.invdeath = false
     h.plvl   = 0 #protection(h)
     h.ptime  = 0
@@ -124,7 +126,7 @@ function tpp(x::Human, P::HiaParameters)
         ## move their compartments
         @match Symbol(x.health) begin
             :SUSC => error("Hia model => A susceptible has expired - how?")
-            :LAT  =>begin ## latency has expired, moving to either carriage or presymptomatic, depends on age
+            :LAT  =>begin ## latency has expired, moving to either carriage or symptomatic or invasive, depends on age
                         ## get their min/max carriage probs and whether they will go to invasive
                         minp, maxp, invp  = carriageprobs(x.path, P)  ## path should've been set when they became latent -- see swap() function. 
                         pc = rand()*(maxp - minp) + minp  ## randomly sample probability to carriage from range
@@ -137,11 +139,19 @@ function tpp(x::Human, P::HiaParameters)
             :CAR  => x.swap = REC
             :SYMP =>begin ## symptomatic has expired.. moving to INV or REC
                         if x.inv ## if invasive is true 
+                            
+                            ## check whether they will be hospitalized
+                            if rand() < P.prob_of_hospitalization
+                                x.hospitalized = true
+                            else
+                                x.hospitalized = false
+                            end
+                    
                             ## check if they will die because of invasive
                             if rand() < P.casefatalityratio
-                                x.swap = DEADINV
+                                x.invdeath = true
                             else 
-                                x.swap = INV
+                                x.invdeath = false
                             end
                         else 
                             x.swap = REC
@@ -236,12 +246,11 @@ function swap(h::Human, P::HiaParameters)
     ## this function also updates their personal counters.
 
     ## ** see comment below on setting the variables (especially path) in correct order
-    
     if h.swap == UNDEF
         return nothing
     end
 
-    if h.swap == DEAD || h.swap == DEADINV
+    if h.swap == DEAD
         newborn(h)  ## make the person a newborn
         return nothing
     end
@@ -250,15 +259,13 @@ function swap(h::Human, P::HiaParameters)
     h.health = h.swap
     h.swap = UNDEF
     h.timeinstate = 0
-    h.statetime = statetime(h.health, P)
+    h.statetime = statetime(h, P)  ## REMEMBER TO SWAP FIRST .. this gets the statetime of their current health
     h.inv == h.health == LAT ? false : h.inv  ## reset invasive if they are going to latent.. when they expire out of latent and (possible) swap to symp, this property will be calculated again
     h.path = h.health == LAT ? pathtaken(oldhealth, h) : 0
     ## get their path, path depends on protection lvl  - so always update path BEFORE protection lvl. 
     ## ie, if the person is swappning to latent (ie, x.health = latent set above), protection() in the next line will return 0 for path taken.
     ## slight inconvenient "feature": when transferring from REC -> SUS (ie, health = SUS, oldhealth = REC), the pathtaken is "4".. however, the person's path isnt actually determined until he moves to latent
     h.plvl = protection(h) ## this will get a new protection level, based on the health we just set above
-
-   
 
     ## update individual counters, and pathtaken/protection cases.
     if h.health == LAT   
@@ -293,9 +300,9 @@ function update(x::Human, P::HiaParameters, DC::DataCollection, time)
             inv[time, x.agegroup] += 1
         elseif x.swap == REC
             rec[time, x.agegroup] += 1
-        elseif x.swap == DEAD
+        elseif x.swap == DEAD && x.invdeath == false
             deadn[time, x.agegroup] += 1
-        elseif x.swap == DEADINV 
+        elseif x.swap == DEAD && x.invdeath == true
             deadi[time, x.agegroup] += 1
         end  
         ## apply the swap function
@@ -304,68 +311,3 @@ function update(x::Human, P::HiaParameters, DC::DataCollection, time)
 end
 
 
-### OLD FUNCTIONS
-
-function update_old(h::Array{Human}, P::HiaParameters, DC::DataCollection, time::Int64)
-    ## this function updates the lattice.
-    ##  the order of operations:
-    ##   - dailycontact, timeinstate++, age++
-    ## this function counts incidence data, increases age, and calculates death
-
-    ## unpack datacollection vectors  -- these are multidimensional vectors 
-    @unpack lat, car, sym, inv, rec = DC 
-    
-    ## go through each human
-    for i in 1:P.gridsize 
-
-        ## check for swaps     
-        if h[i].swap != UNDEF
-            ## collect our data
-            if h[i].swap == LAT 
-                lat[time, h[i].agegroup] += 1
-            elseif h[i].swap == CAR
-                car[time, h[i].agegroup] += 1
-            elseif h[i].swap == SYMP
-                sym[time, h[i].agegroup] += 1
-            elseif h[i].swap == INV
-                inv[time, h[i].agegroup] += 1
-            elseif h[i].swap == REC
-                rec[time, h[i].agegroup] += 1
-            end    
-            ## apply the swap function
-            swap(h[i], P)
-        end
-
-        
-    end
-end
-
-
-
-#deprecated
-function timeplusplus(h::Array{Human}, P::HiaParameters)
-    @simd for x in h ## for each human
-        x.timeinstate += 1
-        if x.timeinstate >= x.statetime && x.swap == UNDEF  #
-            ## move their compartments
-            @match Symbol(x.health) begin
-                :SUSC => error("Hia model => A susceptible has expired - how?")
-                :LAT  => begin ## latency has expired, moving to either carriage or presymptomatic, depends on age
-                            ## get their min/max carriage probs and whether they will go to invasive
-                            minp, maxp, invp  = carriageprobs(x.path, P)  ## path should've been set when they became latent -- see swap() function. 
-                            pc = rand()*(maxp - minp) + minp  ## randomly sample probability to carriage from range
-                            x.swap = rand() < pc ? CAR : SYMP                            
-                            # if the person is going to symptomatic, check if they will go to invasive
-                            if x.swap == SYMP && x.invcnt == 0                       
-                                    x.inv = rand() < (1 - invp) ? true : false
-                            end
-                         end
-                :CAR  => x.swap = REC
-                :SYMP => x.swap = x.inv == true ? INV : REC        ## if going to invasive, check that
-                :INV  => x.swap = REC
-                :REC  => x.swap = SUSC
-                _     => error("Hia => Health status not known to @match")
-            end
-        end
-    end
-end

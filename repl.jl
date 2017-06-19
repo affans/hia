@@ -18,11 +18,11 @@ function runmain_parallel(numberofsims, P::HiaParameters)
     print("starting pmap...\n") 
     
     # cb is the callback function. It updates the progress bar
-    results = pmap((cb, x) -> main(x, P, cb), Progress(numberofsims*P.simtime), 1:numberofsims, passcallback=true)   
+    results = pmap((cb, x) -> main(x, P, cb), Progress(numberofsims*(P.simtime + P.vaccinetime)), 1:numberofsims, passcallback=true)   
      ## process all five agegroups
     println("starting processing of results")
     for a = 1:5 
-      processresults_ag(a, P.simtime, numberofsims, results)      
+      processresults_ag(a, (P.simtime + P.vaccinetime), numberofsims, results)      
     end
     return results
 end
@@ -102,7 +102,7 @@ function runprofile()
 end
 
 @everywhere P = HiaParameters(simtime = 30*365, betaone=0.045, betatwo=0.04, betathree=0.03, betafour = 0.075)
-results = runmain_parallel(200, P);
+results = runmain_parallel(100, P);
 
 # function scratch()
 #  P = HiaParameters(simtime = 100, gridsize = 100000)
@@ -111,10 +111,14 @@ results = runmain_parallel(200, P);
 
 
 
+
+
   # @unpack lat, car, sym, inv, rec = results[2] ## unpack datacollection vectors
+  # P = HiaParameters(simtime = 100, gridsize = 100000)
   # humans = Array{Human}(P.gridsize);
   # initialize(humans, P)
   # demographics(humans, P)
+  # a = [statetime(humans[1], P) for i = 1:1000]
 
 
   #  @profile for time = 1:P.simtime
