@@ -18,11 +18,11 @@ function runmain_parallel(numberofsims, P::HiaParameters)
     print("starting pmap...\n") 
     
     # cb is the callback function. It updates the progress bar
-    results = pmap((cb, x) -> main(x, P, cb), Progress(numberofsims*(P.simtime + P.vaccinetime)), 1:numberofsims, passcallback=true)   
+    results = pmap((cb, x) -> main(x, P, cb), Progress(numberofsims*P.simtime), 1:numberofsims, passcallback=true)   
      ## process all five agegroups
     println("starting processing of results")
     for a = 1:5 
-      processresults_ag(a, (P.simtime + P.vaccinetime), numberofsims, results)      
+      processresults_ag(a, P.simtime, numberofsims, results)      
     end
     return results
 end

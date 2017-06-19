@@ -36,7 +36,7 @@ function main(simulationnumber::Int64, P::HiaParameters, cb)
     #println("typeof progress: $(typeof(progress))")
 
     #P = HiaParameters(simtime = 3650, gridsize = 100000)
-    DC = DataCollection(P.simtime + P.vaccinetime)
+    DC = DataCollection(P.simtime)
 
     ## setup human grid   
     humans = Array{Human}(P.gridsize);
@@ -71,31 +71,6 @@ function main(simulationnumber::Int64, P::HiaParameters, cb)
             update(x, P, DC, time)
         end
         cb(1)                        
-    end
-    if P.vaccinetime > 0 ## if vaccine is tunred on 
-        ### vaccine time ... this is a copy of the above code.. 
-        for time = (P.simtime + 1):(P.simtime + P.vaccinetime)
-            ## start of day.... get bins
-            n = find(x -> x.age < 365, humans)
-            f = find(x -> x.age >= 365 && x.age < 1460, humans)
-            s = find(x -> x.age >= 1460 && x.age < 3285, humans)    
-            t = find(x -> x.age >= 3285, humans)
-            for x in humans
-                if x.age == P.doseonetime 
-                    primary(x) 
-                    dose(x)
-                elseif x.age == P.dosetwotime || x.age == P.dosethreetime 
-                    dose(x)
-                elseif x.age == P.boostertime
-                    booster(x)
-                end
-                dailycontact(x, P, humans, ag1, ag2, ag3, ag4, n, f, s, t)
-                tpp(x, P)
-                app(x, P)
-                update(x, P, DC, time)  ## make sure time is "correct" to not override data from the above main loop
-            end
-            cb(1)  
-        end
     end
     return humans, DC
 end

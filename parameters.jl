@@ -7,7 +7,6 @@
 @with_kw immutable HiaParameters @deftype Int32
     # general parameters
     simtime = 365       ## time of simulation 40 years in days
-    vaccinetime = 1825  ## 5 years of vaccine time - runs AFTER the simtime.
     gridsize = 100000   ## size of population 
     inital_latent = 1   ## initial prevalence
     
