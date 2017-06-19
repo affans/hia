@@ -5,8 +5,6 @@ type Human
     health::HEALTH     ## current health status
     swap::HEALTH       ## swap health status (works as "last status" also - see swap())
     path::Int8         ## the path they will take if they get sick
-    inv::Bool          ## whether this human will become invasive
-    hosp::Bool         ## whether this human will become hospitalized
     invdeath::Bool     ## whether this human is invasive and will die
     plvl::Float32      ## protection level - 0 - 100% 
     ptime::Int32       ## how long this protection will last - maybe not needed 
@@ -31,7 +29,7 @@ type Human
     Human( health = SUSC, 
            swap   = UNDEF, 
            path   = 0, 
-           inv    = false, hosp = false, invdeath = false,
+           invdeath = false,
            plvl   = 0,
            ptime  = 0,
            latcnt = 0,
@@ -41,7 +39,7 @@ type Human
            age = 0, agegroup = 0, gender = MALE,
            meetcnt = 0, dailycontact = 0,
            pvaccine = false, bvaccine = false, 
-           dosesgiven = 0) = new(health, swap, path, inv, hosp, invdeath, plvl, ptime, latcnt, symcnt, invcnt, timeinstate, statetime, age, agegroup, gender, meetcnt, dailycontact, pvaccine, bvaccine, dosesgiven) 
+           dosesgiven = 0) = new(health, swap, path, invdeath, plvl, ptime, latcnt, symcnt, invcnt, timeinstate, statetime, age, agegroup, gender, meetcnt, dailycontact, pvaccine, bvaccine, dosesgiven) 
 end
 
 function initialize(h::Array{Human},P::HiaParameters)
@@ -72,9 +70,7 @@ function newborn(h::Human)
     ## make a human "born" by setting its values to defaults.
     h.health = SUSC
     h.swap   = UNDEF
-    h.path   = 0 
-    h.inv    = false
-    h.hosp   = false
+    h.path   = 0   
     h.invdeath = false
     h.plvl   = 0 #protection(h)
     h.ptime  = 0
@@ -130,34 +126,20 @@ function tpp(x::Human, P::HiaParameters)
                         ## get their min/max carriage probs and whether they will go to invasive
                         minp, maxp, invp  = carriageprobs(x.path, P)  ## path should've been set when they became latent -- see swap() function. 
                         pc = rand()*(maxp - minp) + minp  ## randomly sample probability to carriage from range
-                        x.swap = rand() < pc ? CAR : SYMP                            
-                        # if the person is going to symptomatic, check if they will go to invasive
-                        if x.swap == SYMP && x.invcnt == 0                       
-                            x.inv = rand() < (1 - invp) ? true : false
-                        end
+                        if rand() < pc 
+                            x.swap = CAR  ## going to carriage
+                        else
+                            ## going to symptomatic or invasive
+                            if rand() < (1 - invp) && x.invcnt == 0
+                                x.swap = INV
+                            else 
+                                x.swap = SYMP
+                            end
+                        end 
                     end
             :CAR  => x.swap = REC
-            :SYMP =>begin ## symptomatic has expired.. moving to INV or REC
-                        if x.inv ## if invasive is true 
-                            
-                            ## check whether they will be hospitalized
-                            if rand() < P.prob_of_hospitalization
-                                x.hospitalized = true
-                            else
-                                x.hospitalized = false
-                            end
-                    
-                            ## check if they will die because of invasive
-                            if rand() < P.casefatalityratio
-                                x.invdeath = true
-                            else 
-                                x.invdeath = false
-                            end
-                        else 
-                            x.swap = REC
-                        end
-                    end 
-            :INV  => x.swap = REC
+            :SYMP => x.swap = REC
+            :INV  => x.swap = x.invdeath == true ? DEAD : REC
             :REC  => x.swap = SUSC
             _     => error("Hia => Health status not known to @match")
         end
@@ -193,8 +175,8 @@ function dailycontact(x::Human, P::HiaParameters, h::Array{Human}, ag1, ag2, ag3
     end        
     ## at this point, human x and randhuman are going to contact each other.         
     ## check if transmission criteria is satisfied
-    t = (x.health == SUSC || x.health == REC) && (h[randhuman].health == CAR || h[randhuman].health == SYMP || h[randhuman].health == PRE)
-    y = (h[randhuman].health == SUSC || h[randhuman].health == REC) && (x.health == CAR || x.health == SYMP || x.health == PRE)  
+    t = (x.health == SUSC || x.health == REC) && (h[randhuman].health == CAR || h[randhuman].health == SYMP)
+    y = (h[randhuman].health == SUSC || h[randhuman].health == REC) && (x.health == CAR || x.health == SYMP)  
     if t
         transmission(x, h[randhuman], P)
     elseif y 
@@ -211,7 +193,7 @@ function transmission(susc::Human, sick::Human, P::HiaParameters)
     ## can only make the person swap to latent!
     
     ## error check
-    if (sick.health != CAR) && (sick.health != SYMP) && (sick.health != PRE)
+    if (sick.health != CAR) && (sick.health != SYMP) 
         error("Hia Model => transmission() -- sick person is not actually sick")
     end
 
@@ -231,7 +213,7 @@ function transmission(susc::Human, sick::Human, P::HiaParameters)
     end
 
     ## if they are carriage or presymptomatic - apply a reduction (value set in parameters)
-    trans = (sick.health == CAR || sick.health == PRE) ? beta*P.carriagereduction*(1 - susc.plvl) : beta*(1 - susc.plvl)
+    trans = (sick.health == CAR) ? beta*P.carriagereduction*(1 - susc.plvl) : beta*(1 - susc.plvl)
     if rand() < trans        
         setswap(susc, LAT)
     end
@@ -254,13 +236,19 @@ function swap(h::Human, P::HiaParameters)
         newborn(h)  ## make the person a newborn
         return nothing
     end
+
+    ## context specific checks
+    if h.swap == INV 
+        ## they are swapping to INV.. check if they will die using case fatality ratio
+        h.invdeath = rand() < P.casefatalityratio ? true : false
+    end  ## no need for an else... person can never become invasive again (or shouldnt)
+
     # common variables for all compartments    
     oldhealth = h.health ## need to pass into pathtaken()
     h.health = h.swap
     h.swap = UNDEF
     h.timeinstate = 0
     h.statetime = statetime(h, P)  ## REMEMBER TO SWAP FIRST .. this gets the statetime of their current health
-    h.inv == h.health == LAT ? false : h.inv  ## reset invasive if they are going to latent.. when they expire out of latent and (possible) swap to symp, this property will be calculated again
     h.path = h.health == LAT ? pathtaken(oldhealth, h) : 0
     ## get their path, path depends on protection lvl  - so always update path BEFORE protection lvl. 
     ## ie, if the person is swappning to latent (ie, x.health = latent set above), protection() in the next line will return 0 for path taken.

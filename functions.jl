@@ -24,8 +24,7 @@ function track(h::Human, i::Int64)
     println("...health")
     println("       cur/swap: $(h.health)/$(h.swap)")
     println("       path:     $(h.path)")
-    println("       inv:      $(h.inv)")
-    println("       plvl:     $(h.plvl)")
+     println("       plvl:     $(h.plvl)")
     println("...demographics")
     println("       age/sex:  $(h.age) / $(h.gender)")
     println("       age(yrs): $(h.age/365)")    
@@ -165,9 +164,9 @@ function agegroup(age::Integer)
 end
 
 function statetime(x::Human, P::HiaParameters)
-    ## this returns the statetime for everystate
-    ## match dosnt work with ENUMS, convert to Int
-    ##  @enum HEALTH SUSC=1 LAT=2 PRE=3 SYMP=4 INV=5 REC=6 DEAD=7 UNDEF=0
+    ## this returns the statetime for everystate..
+    ## it uses their CURRENT HEALTH.. so if using for swap purposes, SWAP FIRST then get statetime. 
+   
     st = 0 ## return variable
     @match Symbol(x.health) begin
         :SUSC  => st = typemax(Int32)  ## no expiry for suscepitble
@@ -177,24 +176,15 @@ function statetime(x::Human, P::HiaParameters)
                     st = max(P.latentmin, min(Int(ceil(rand(d))), P.latentmax))
                 end
         :CAR   => st = rand(P.carriagemin:P.carriagemax) ## fixed 50 days for carriage?
-        :PRE   => st = P.presympmin
-        :SYMP  => 
+        :SYMP  => st = rand(Truncated(Poisson(P.symptomaticmean), P.symptomaticmin, P.symptomaticmax))
+        :INV   =>
                 begin
-                    d = Poisson(P.symptomaticmean)
-                    st = max(P.symptomaticmin, min(rand(d), P.symptomaticmax)) + P.infaftertreatment
-                end
-        :INV   =>begin
-                    if x.hosp 
-                        if x.invdeath
-                            d = Poisson(P.invasive_hospital_mean_death)
-                            st = max(P.invasive_hospital_min_death, min(Int(ceil(rand(d))), P.invasive_hospital_max_death))                            
-                        else 
-                            st = rand(P.invasive_hospital_min_nodeath:P.invasive_hospital_max_nodeath)
-                        end
+                    if x.invdeath
+                        st = rand(Truncated(Poisson(P.invasive_hospital_mean_death), P.invasive_hospital_min_death, P.invasive_hospital_max_death))
                     else 
-                        st = P.invasive_nohospital
+                        st = rand(P.invasive_hospital_min_nodeath:P.invasive_hospital_max_nodeath)                
                     end
-                 end       
+                end       
         :REC   => st = rand(P.recoveredmin:P.recoveredmax)
         :DEAD  => error("Hia model =>  not implemented")        
         _   => throw("Hia model => statetime passed in non-health enum")

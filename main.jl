@@ -101,14 +101,14 @@ function main(simulationnumber::Int64, P::HiaParameters, cb)
 end
 
     
-  P = HiaParameters(simtime = 100, gridsize = 100000)
-  humans = Array{Human}(P.gridsize);
-  initialize(humans, P)
-  demographics(humans, P)
-  humans[1].health = INV
-  humans[1].invdeath = true
-  humans[1].hosp = true
-  a = [statetime(humans[1], P) for i = 1:100000]
+#   P = HiaParameters(simtime = 100, gridsize = 100000)
+#   humans = Array{Human}(P.gridsize);
+#   initialize(humans, P)
+#   demographics(humans, P)
+#   humans[1].health = INV
+#   humans[1].invdeath = true
+
+#   a = [statetime(humans[1], P) for i = 1:100000]
   
 # a = map(x -> x.meetcnt, h)
 

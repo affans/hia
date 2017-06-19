@@ -1,5 +1,5 @@
 ## main system enums
-@enum HEALTH SUSC LAT CAR PRE SYMP INV REC DEAD UNDEF
+@enum HEALTH SUSC LAT CAR SYMP INV REC DEAD UNDEF
 @enum GENDER MALE=1 FEMALE=2
 
 
@@ -27,11 +27,10 @@
     carriagemin = 14   ## days stayed in carriage, 2 weeks to 10 weeks
     carriagemax = 70   ## 10 weeks
 
-    presympmin = 1     ## days stayed in presymptomatic
-
     symptomaticmean = 2 ## for poisson distribution
     symptomaticmin = 1 ## 1 day minimum symptomatic 
     symptomaticmax = 10 
+
     infaftertreatment = 2   ## after symptomatic, people get treatment -> adds 2 days of infectiousness. 
 
     recoveredmin = 2*365  ## two years for minimum time of staying recovered 
@@ -45,8 +44,6 @@
     invasive_hospital_min_death = 1      ## if marked for death, 
     invasive_hospital_max_death = 10     ## length of hospital stay = Poisson(4)
     invasive_hospital_mean_death = 4     ## with min/max 1/10 - chosen so that 25% of hospitalizion length stay is 2 days - based on data 
-
-    prob_of_hospitalization::Float64 = 0.90       ## probability of going to hospital when turning invasive
 
     casefatalityratio::Float64 = 0.091 ## case fatality ratios
 
