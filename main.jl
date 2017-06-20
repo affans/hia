@@ -11,21 +11,11 @@ using PmapProgressMeter
 #using Profile
 
 include("parameters.jl")
+include("datacollection.jl")
 include("distributions.jl")
 include("humans.jl")
-include("interaction.jl")
 include("vaccine.jl")
 include("functions.jl")
-
-
-function testprogress()
-    P = Progress(1000)
-    for i = 1:1000
-        next!(P)
-        sleep(0.01)
-    end
-end
-
 
 function main(simulationnumber::Int64, P::HiaParameters, cb)        
     ## check if we need to create an instance of a single progress bar
@@ -54,21 +44,19 @@ function main(simulationnumber::Int64, P::HiaParameters, cb)
     ag3 = Categorical(mmt[3, :])
     ag4 = Categorical(mmt[4, :])
 
+
     ## main time loop
-      ##  the order of operations:
-    ##   - dailycontact, timeinstate++, age++
-     #println("starting time loop distributions")
     for time = 1:P.simtime
         ## start of day.... get bins
         n = find(x -> x.age < 365, humans)
         f = find(x -> x.age >= 365 && x.age < 1460, humans)
         s = find(x -> x.age >= 1460 && x.age < 3285, humans)    
         t = find(x -> x.age >= 3285, humans)
-        for x in humans
-            dailycontact(x, P, humans, ag1, ag2, ag3, ag4, n, f, s, t)
-            tpp(x, P)
-            app(x, P)
-            update(x, P, DC, time)
+        for i in eachindex(humans)
+            dailycontact(humans[i], P, humans, ag1, ag2, ag3, ag4, n, f, s, t)
+            tpp(humans[i], P)
+            app(humans[i], P)
+            update(humans[i], P, DC, time)          
         end
         cb(1)                        
     end
@@ -76,10 +64,24 @@ function main(simulationnumber::Int64, P::HiaParameters, cb)
 end
 
     
-#   P = HiaParameters(simtime = 100, gridsize = 100000)
-#   humans = Array{Human}(P.gridsize);
-#   initialize(humans, P)
-#   demographics(humans, P)
+#P = HiaParameters(simtime = 100, gridsize = 100000, betaone = 1, betatwo = 1, betathree = 1, betafour = 1)
+#humans = Array{Human}(P.gridsize);
+#initialize(humans, P)
+#demographics(humans, P)
+#dailycontact(humans[hi], P, humans, ag1, ag2, ag3, ag4, n, f, s, t)
+#find(x -> x.swap != UNDEF, humans)
+
+
+#for i in eachindex(humans)
+#   dailycontact(humans[i], P, humans, ag1, ag2, ag3, ag4, n, f, s, t)
+#    tpp(humans[i], P)
+#    app(humans[i], P)
+#    @time update(humans[i], P, DC, time)                
+    #println(i)
+#end
+
+#find(x -> x.health != SUSC, humans)
+#track(humans[hi])
 #   humans[1].health = INV
 #   humans[1].invdeath = true
 

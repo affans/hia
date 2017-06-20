@@ -7,7 +7,7 @@
 # end
 
 
-addprocs(60)
+addprocs(50)
 @everywhere include("main.jl")
   
 
@@ -101,8 +101,9 @@ function runprofile()
     ProfileView.view()            
 end
 
-@everywhere P = HiaParameters(simtime = 30*365, betaone=0.045, betatwo=0.04, betathree=0.03, betafour = 0.075)
-results = runmain_parallel(100, P);
+@everywhere P = HiaParameters(simtime = 100*365, betaone=0.065, betatwo=0.045, betathree=0.035, betafour = 0.075)
+#@everywhere P = HiaParameters(simtime = 5*365, betaone=0.5, betatwo=0.5, betathree=0.5, betafour = 0.5)
+results = runmain_parallel(50, P);
 
 # function scratch()
 #  P = HiaParameters(simtime = 100, gridsize = 100000)

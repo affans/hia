@@ -63,8 +63,6 @@ function demographics(h::Array{Human}, P::HiaParameters)
     return nothing
 end
 
-setswap(h::Human, swapto::HEALTH) =  h.swap = h.swap == UNDEF ? swapto : h.swap ## this function correctly sets the swap for a human.
-
 
 function newborn(h::Human)
     ## make a human "born" by setting its values to defaults.
@@ -93,6 +91,7 @@ function app(h::Human, P::HiaParameters)
     ## update age, agegroup, natural death, and protectionlvl at 5 years old
     ## output: age++, might possibly die
     h.age += 1   ## increase age by one
+    
     tage = h.age ## store as temp
     
     # check at a yearly level
@@ -139,7 +138,7 @@ function tpp(x::Human, P::HiaParameters)
                     end
             :CAR  => x.swap = REC
             :SYMP => x.swap = REC
-            :INV  => x.swap = x.invdeath == true ? DEAD : REC
+            :INV  => x.swap = x.invdeath == true ? DEAD : REC  ## if invdeath was on.. they will die.. 
             :REC  => x.swap = SUSC
             _     => error("Hia => Health status not known to @match")
         end
@@ -191,7 +190,6 @@ end
 function transmission(susc::Human, sick::Human, P::HiaParameters)
     ## computes the transmission probability using the baseline for a susc and a sick person. If person is carriage, there is an automatic 50% reduction in beta value.
     ## can only make the person swap to latent!
-    
     ## error check
     if (sick.health != CAR) && (sick.health != SYMP) 
         error("Hia Model => transmission() -- sick person is not actually sick")
@@ -215,7 +213,7 @@ function transmission(susc::Human, sick::Human, P::HiaParameters)
     ## if they are carriage or presymptomatic - apply a reduction (value set in parameters)
     trans = (sick.health == CAR) ? beta*P.carriagereduction*(1 - susc.plvl) : beta*(1 - susc.plvl)
     if rand() < trans        
-        setswap(susc, LAT)
+        susc.swap = LAT
     end
 end
 
@@ -268,9 +266,7 @@ end
 
 
 function update(x::Human, P::HiaParameters, DC::DataCollection, time)
-    ## this function updates each humans
-    ##  the order of operations:
-    ##   - dailycontact, timeinstate++, age++
+    ## this function runs the swap function. 
     ## this function counts incidence data and calls swap()
 
     ## unpack datacollection vectors  -- these are multidimensional vectors 

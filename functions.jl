@@ -1,7 +1,7 @@
 
 function todo()
     warn("Hia model => √ calculate probability distribution for death, and implement code")
-    warn("Hia model => update pathtaken() when vaccine is implemented")    
+    warn("Hia model => √ update pathtaken() when vaccine is implemented")    
     warn("Hia model => remove find functions, and optimize - demographics")
     warn("Hia model => check if dosesgiven > 0 => pvaccine == true.")
     warn("Hia model => check if bvaccine = true => dosesgiven = 3.")
@@ -10,31 +10,31 @@ function todo()
     warn("Hia model => √ if invasive before, always mark as false")   
     warn("Hia model => Implement death in invasive compartment")
     warn("Hia model => √ Use four beta values instead of one")
-    warn("Hia model => think of a way to implement changing age distribution")
-    warn("Hia model => algorithm to track a human")
+    warn("Hia model => think of a way to implement plotting for changing age distribution")
+    warn("Hia model => √ algorithm to track a human")
     warn("Hia model => profile main() and check bottlenecks")
     warn("Hia model => verify age brackets for contact matrix")
     warn("Hia model => clean up cmt-ag variables in main()")  
     warn("Hia model => clean up bins variables in main()")  
+    warn("Hia model => disease specific hospitalization length of stay")  
+    
     
 end
 
-function track(h::Human, i::Int64)
-    println("tracking human: $i")
+function track(h::Human)
     println("...health")
     println("       cur/swap: $(h.health)/$(h.swap)")
     println("       path:     $(h.path)")
-     println("       plvl:     $(h.plvl)")
+     println("      plvl:     $(h.plvl)")
     println("...demographics")
     println("       age/sex:  $(h.age) / $(h.gender)")
     println("       age(yrs): $(h.age/365)")    
-    println("       meetcnt:  $(h.meetcnt)")
     println("...model (_instate) variables")
     println("       time:     $(h.timeinstate)")
     println("       expiry:   $(h.statetime)")
-    println("...vaccine")
-    println("       booster:  $(h.bvaccine)")
-    println("       # doses:  $(h.dosesgiven)")
+    #println("...vaccine")
+    #println("       booster:  $(h.bvaccine)")
+    #println("       # doses:  $(h.dosesgiven)")
     
 end
 
@@ -211,8 +211,8 @@ end
 
 function insertrandom(h::Array{Human}, P::HiaParameters, s::HEALTH)
     i = rand(1:P.gridsize) ## select a random human
-    # set the swap and run the update functiona manually
-    setswap(h[i], s)    
+    # set the swap and run the update function manually
+    h[i].swap = s
     swap(h[i], P)
     return i
 end
