@@ -180,13 +180,14 @@ function statetime(x::Human, P::HiaParameters)
         :INV   =>
                 begin
                     if x.invdeath
-                        st = rand(Truncated(Poisson(P.invasive_hospital_mean_death), P.invasive_hospital_min_death, P.invasive_hospital_max_death))
+                        st = rand(Truncated(Poisson(P.hospitalmean_death), P.hospitalmin_death, P.hospitalmax_death))
                     else 
-                        st = rand(P.invasive_hospital_min_nodeath:P.invasive_hospital_max_nodeath)                
+                        ## based on disease specific.
+                        st = rand(P.hospitalmin_nodeath:P.hospitalmax_nodeath)     
                     end
                 end       
         :REC   => st = rand(P.recoveredmin:P.recoveredmax)
-        :DEAD  => error("Hia model =>  not implemented")        
+        :DEAD  => st = typemax(Int32)        
         _   => throw("Hia model => statetime passed in non-health enum")
     end
     return st
@@ -214,5 +215,6 @@ function insertrandom(h::Array{Human}, P::HiaParameters, s::HEALTH)
     # set the swap and run the update function manually
     h[i].swap = s
     swap(h[i], P)
+    h[i].swap = UNDEF
     return i
 end

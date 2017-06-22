@@ -21,7 +21,7 @@ function runmain_parallel(numberofsims, P::HiaParameters)
     results = pmap((cb, x) -> main(x, P, cb), Progress(numberofsims*P.simtime), 1:numberofsims, passcallback=true)   
      ## process all five agegroups
     println("starting processing of results")
-    for a = 1:5 
+    for a = 1:5 ## five age groups
       processresults_ag(a, P.simtime, numberofsims, results)      
     end
     return results
@@ -55,7 +55,7 @@ function processresults_ag(agegroup, numofdays, numofsims, results)
     grpcnts = zeros(Int64, 5, numofsims)
 
     for i = 1:length(results)  # for each simulation
-      dc = results[i][2]                   ## get the DC part of the results for each simulation
+      dc = results[i][2]   ## get the DC part of the results for each simulation
       @unpack lat, car, sym, inv, rec, deadn, deadi = dc ## unpack datacollection vectors
       ## these DC variables are matrices of size numofdays x 5 (where 5 is the number of agegroups)
 
@@ -69,11 +69,11 @@ function processresults_ag(agegroup, numofdays, numofsims, results)
       
 
       h = results[i][1] 
-      grpcnts[1, i] = length(find(x -> x.agegroup == 1, h))
-      grpcnts[2, i] = length(find(x -> x.agegroup == 2, h))
-      grpcnts[3, i] = length(find(x -> x.agegroup == 3, h))
-      grpcnts[4, i] = length(find(x -> x.agegroup == 4, h))
-      grpcnts[5, i] = length(find(x -> x.agegroup == 5, h))
+      grpcnts[1, i] = length(find(x -> x.agegroup_beta == 1, h))
+      grpcnts[2, i] = length(find(x -> x.agegroup_beta == 2, h))
+      grpcnts[3, i] = length(find(x -> x.agegroup_beta == 3, h))
+      grpcnts[4, i] = length(find(x -> x.agegroup_beta == 4, h))
+      grpcnts[5, i] = length(find(x -> x.agegroup_beta == 5, h))
       
     end
     dirname = string("Ag", agegroup)
@@ -101,9 +101,11 @@ function runprofile()
     ProfileView.view()            
 end
 
-@everywhere P = HiaParameters(simtime = 100*365, betaone=0.065, betatwo=0.045, betathree=0.035, betafour = 0.075)
-#@everywhere P = HiaParameters(simtime = 5*365, betaone=0.5, betatwo=0.5, betathree=0.5, betafour = 0.5)
-results = runmain_parallel(50, P);
+##  --- CHANGE NUMBER OF PROCS --- ###
+
+@everywhere P = HiaParameters(simtime = 50*365,  betaone=0.073, betatwo=0.053, betathree=0.0425, betafour = 0.07)
+#@everywhere P = HiaParameters(simtime = 1*365, betaone=0.9, betatwo=0.9, betathree=0.9, betafour = 0.9)
+results = runmain_parallel(200, P);
 
 # function scratch()
 #  P = HiaParameters(simtime = 100, gridsize = 100000)

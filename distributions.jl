@@ -125,7 +125,7 @@ function distribution_ageofdeath(a::Int64, g::GENDER)
         p3 =   0.0001986  #(3.823e-05, 0.000359)
         p4 =   -0.002122  #(-0.005999, 0.001755)
         p5 =    0.007877  #(-0.01953, 0.03528) 
-         rval = p1*a^4 + p2*a^3 + p3*a^2 + p4*a + p5
+        rval = p1*a^4 + p2*a^3 + p3*a^2 + p4*a + p5
     end
     return rval
 end

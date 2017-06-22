@@ -1,7 +1,7 @@
 ## main system enums
 @enum HEALTH SUSC LAT CAR SYMP INV REC DEAD UNDEF
 @enum GENDER MALE=1 FEMALE=2
-
+@enum INVTYPE NOINV=0 MEN=1 PNM=2 NPNM=3 
 
 ## main system parameters
 @with_kw immutable HiaParameters @deftype Int32
@@ -16,7 +16,10 @@
     betathree::Float32 = 0.03  ## 5-10, 60+
     betafour::Float32 = 0.02   ## 10-60
     carriagereduction::Float32 = 0.5
-    ## 1990 - 2017 - 27 years,  
+    
+    invmeningitis::Float32 = 0.33
+    invpneumonia::Float32 = 0.29
+    invother::Float32 = 0.38
     
     latentshape::Float64 = 0.588
     latentscale::Float64 = 0.458
@@ -37,12 +40,14 @@
 
     invasive_nohospital = 10 ## fixed 10 days .. duration of treatment. s
         
-    invasive_hospital_min_nodeath = 8    ## if no death is marked for invasive, 
-    invasive_hospital_max_nodeath = 12   ##  length 8 - 12 days
+    hospitalmin_nodeath = 8    ## if no death is marked for invasive, 
+    hospitalmax_nodeath = 12   ##  length 8 - 12 days
 
-    invasive_hospital_min_death = 1      ## if marked for death, 
-    invasive_hospital_max_death = 10     ## length of hospital stay = Poisson(4)
-    invasive_hospital_mean_death = 4     ## with min/max 1/10 - chosen so that 25% of hospitalizion length stay is 2 days - based on data 
+    
+    hospitalmin_death = 1      ## if marked for death, 
+    hospitalmax_death = 10     ## length of hospital stay = Poisson(4)
+    hospitalmean_death = 4     ## with min/max 1/10 - chosen so that 25% of 
+
 
     casefatalityratio::Float64 = 0.091 ## case fatality ratios
 

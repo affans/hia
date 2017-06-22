@@ -5,9 +5,9 @@ type Human
     health::HEALTH     ## current health status
     swap::HEALTH       ## swap health status (works as "last status" also - see swap())
     path::Int8         ## the path they will take if they get sick
+    invtype::INVTYPE   ## if they become invasive, what kind of invasive disease?
     invdeath::Bool     ## whether this human is invasive and will die
     plvl::Float32      ## protection level - 0 - 100% 
-    ptime::Int32       ## how long this protection will last - maybe not needed 
     latcnt::Int32      ## how many times this person has become latent
     symcnt::Int32      ## how many times this person has become symptomatic
     invcnt::Int32      ## how many times this person has become invasive
@@ -15,7 +15,7 @@ type Human
     statetime::Int32   ## maximum amount of days spent in health status 
     ## contact structure and demographics
     age::Int32         ## age in days  - 365 days per year
-    agegroup::Int32         ## agegroup - NOT the jackson contact matrix group.
+    agegroup_beta::Int32         ## - NOT the jackson contact matrix group.
     gender::GENDER     ## gender - 50% male/female
     meetcnt::Int32     ## total meet count. how many times this person has met someone else.    
     dailycontact::Int32## not needed ?? ## who this person meets on a daily basis. 
@@ -29,17 +29,17 @@ type Human
     Human( health = SUSC, 
            swap   = UNDEF, 
            path   = 0, 
+           invtype = NOINV, 
            invdeath = false,
            plvl   = 0,
-           ptime  = 0,
            latcnt = 0,
            symcnt = 0,
            invcnt = 0,
            timeinstate = 0, statetime = typemax(Int32), 
-           age = 0, agegroup = 0, gender = MALE,
+           age = 0, agegroup_beta = 0, gender = MALE,
            meetcnt = 0, dailycontact = 0,
            pvaccine = false, bvaccine = false, 
-           dosesgiven = 0) = new(health, swap, path, invdeath, plvl, ptime, latcnt, symcnt, invcnt, timeinstate, statetime, age, agegroup, gender, meetcnt, dailycontact, pvaccine, bvaccine, dosesgiven) 
+           dosesgiven = 0) = new(health, swap, path, invtype, invdeath, plvl, latcnt, symcnt, invcnt, timeinstate, statetime, age, agegroup_beta, gender, meetcnt, dailycontact, pvaccine, bvaccine, dosesgiven) 
 end
 
 function initialize(h::Array{Human},P::HiaParameters)
@@ -56,7 +56,7 @@ function demographics(h::Array{Human}, P::HiaParameters)
         ageyear = findfirst(x -> rn <= x, age_cdf)
         ageyear = ageyear - 1 ## since distribution is 1-based
         x.age =  rand(ageyear*365:ageyear*365 + 365)   ## convert to days
-        x.agegroup = beta_agegroup(x.age)
+        x.agegroup_beta = beta_agegroup(x.age)
         x.gender = rand() < 0.5 ? FEMALE : MALE
         x.plvl = protection(x)
     end
@@ -69,16 +69,16 @@ function newborn(h::Human)
     h.health = SUSC
     h.swap   = UNDEF
     h.path   = 0   
+    h.invtype = NOINV
     h.invdeath = false
     h.plvl   = 0 #protection(h)
-    h.ptime  = 0
     h.latcnt = 0
     h.symcnt = 0
     h.invcnt = 0
     h.timeinstate = 0
     h.statetime = typemax(Int32) 
     h.age = 0
-    h.agegroup = beta_agegroup(0)
+    h.agegroup_beta = beta_agegroup(0)
     h.gender = rand() < 0.5 ? FEMALE : MALE
     h.meetcnt = 0
     h.dailycontact = 0
@@ -101,7 +101,7 @@ function app(h::Human, P::HiaParameters)
             h.plvl = protection(h)
         end
         # every year, recalculate agegroup
-        h.agegroup = beta_agegroup(tage)
+        h.agegroup_beta = beta_agegroup(tage)
         
         # every year, check for death
         ageyears = Int(tage/365)
@@ -138,7 +138,13 @@ function tpp(x::Human, P::HiaParameters)
                     end
             :CAR  => x.swap = REC
             :SYMP => x.swap = REC
-            :INV  => x.swap = x.invdeath == true ? DEAD : REC  ## if invdeath was on.. they will die.. 
+            :INV  => 
+                    begin ## person is coming out of invasive
+                        x.invtype = NOINV  ## if the swap is dead, this gets reset anyways. 
+                        ## if invdeath was on.. they will die..     
+                        x.swap = x.invdeath == true ? DEAD : REC    
+                    end
+            
             :REC  => x.swap = SUSC
             _     => error("Hia => Health status not known to @match")
         end
@@ -197,7 +203,7 @@ function transmission(susc::Human, sick::Human, P::HiaParameters)
 
     ## use the beta_agegroup information to extract the right beta value from parameters   
     beta = 0.0
-    ag = sick.agegroup
+    ag = sick.agegroup_beta
     if ag == 1 
         beta = P.betaone
     elseif ag == 2
@@ -219,6 +225,8 @@ end
 
 function swap(h::Human, P::HiaParameters)
     ## this function moves the human to a new compartment. 
+    ## NOTE: IT dosnt SET the SWAP BACK TO NODEF.. do it manually 
+    ##  OR CALL THE update() function.
     ## if moving to LATENT, calculate their path, and reset their invasive. 
     ## do not reset their invasive if NOT moving to latent.. this is because 
     ## invasive is set when moving to SYMP, so either set invasive = false when 
@@ -226,34 +234,36 @@ function swap(h::Human, P::HiaParameters)
     ## this function also updates their personal counters.
 
     ## ** see comment below on setting the variables (especially path) in correct order
-    if h.swap == UNDEF
+    ## context specific checks 
+    if h.swap == UNDEF  
+        ## only run the function if swap is set. 
         return nothing
     end
 
-    if h.swap == DEAD
-        newborn(h)  ## make the person a newborn
-        return nothing
-    end
-
-    ## context specific checks
-    if h.swap == INV 
+    ## swapping to inv
+    if h.swap == INV                      
         ## they are swapping to INV.. check if they will die using case fatality ratio
         h.invdeath = rand() < P.casefatalityratio ? true : false
+        if h.invdeath == false 
+            ## not dying, check what kind of invasive they will be. 
+            bin = rand(Categorical([P.invmeningitis, P.invpneumonia, P.invother]))
+            ## bin = 1, 2, 3 
+            h.invtype = INVTYPE(bin)
+        end 
     end  ## no need for an else... person can never become invasive again (or shouldnt)
 
     # common variables for all compartments    
     oldhealth = h.health ## need to pass into pathtaken()
     h.health = h.swap
-    h.swap = UNDEF
-    h.timeinstate = 0
+    h.timeinstate = 0    ## they are swapping to new state, reset their time.
     h.statetime = statetime(h, P)  ## REMEMBER TO SWAP FIRST .. this gets the statetime of their current health
     h.path = h.health == LAT ? pathtaken(oldhealth, h) : 0
     ## get their path, path depends on protection lvl  - so always update path BEFORE protection lvl. 
     ## ie, if the person is swappning to latent (ie, x.health = latent set above), protection() in the next line will return 0 for path taken.
     ## slight inconvenient "feature": when transferring from REC -> SUS (ie, health = SUS, oldhealth = REC), the pathtaken is "4".. however, the person's path isnt actually determined until he moves to latent
-    h.plvl = protection(h) ## this will get a new protection level, based on the health we just set above
+    h.plvl = protection(h) ## this will get a new protection level, based on the new health we just set above
 
-    ## update individual counters, and pathtaken/protection cases.
+    ## update individual counters.
     if h.health == LAT   
         h.latcnt += 1
     elseif h.health == SYMP
@@ -264,34 +274,20 @@ function swap(h::Human, P::HiaParameters)
     return nothing
 end
 
-
 function update(x::Human, P::HiaParameters, DC::DataCollection, time)
-    ## this function runs the swap function. 
-    ## this function counts incidence data and calls swap()
-
-    ## unpack datacollection vectors  -- these are multidimensional vectors 
-    @unpack lat, car, sym, inv, rec, deadn, deadi = DC 
-
     if x.swap != UNDEF
-        ## collect our data
-        if x.swap == LAT 
-            lat[time, x.agegroup] += 1
-        elseif x.swap == CAR
-            car[time, x.agegroup] += 1
-        elseif x.swap == SYMP
-            sym[time, x.agegroup] += 1
-        elseif x.swap == INV
-            inv[time, x.agegroup] += 1
-        elseif x.swap == REC
-            rec[time, x.agegroup] += 1
-        elseif x.swap == DEAD && x.invdeath == false
-            deadn[time, x.agegroup] += 1
-        elseif x.swap == DEAD && x.invdeath == true
-            deadi[time, x.agegroup] += 1
-        end  
-        ## apply the swap function
-        swap(x, P)  
+        ## run swap function
+        swap(x, P)
+
+        ## run data collection
+        collect(x, DC, time)
+
+        ## if the swap is dead.. replace them. 
+        if x.swap == DEAD
+            newborn(x)  ## make the person a newborn        
+        else ## reset their swap.             
+            x.swap = UNDEF
+        end
     end
 end
-
 
