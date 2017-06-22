@@ -152,18 +152,8 @@ function protection(h::Human)
 end
 
 
-function agegroup(age::Integer)
-    ## these agegroups only applicable for contacts - used in function dailycontacts()
-    @match age begin
-        0:365       => 1  # 0 - 1  ## completed first year
-        366:1460    => 2  # 2 - 4  ## completed upto 4 years
-        1461:3285   => 3  # 5- 10  ## starting 5th year, completed 10 years
-        3285:36501  => 4  # 10+
-        _           => error("Hia Model => age too large in agegroup()")
-    end
-end
 
-function statetime(x::Human, P::HiaParameters)
+function statetime(x::Human, P::HiaParameters)::Int32
     ## this returns the statetime for everystate..
     ## it uses their CURRENT HEALTH.. so if using for swap purposes, SWAP FIRST then get statetime. 
    
@@ -172,8 +162,9 @@ function statetime(x::Human, P::HiaParameters)
         :SUSC  => st = typemax(Int32)  ## no expiry for suscepitble
         :LAT   => 
                 begin
-                    d = LogNormal(P.latentshape, P.latentscale)
-                    st = max(P.latentmin, min(Int(ceil(rand(d))), P.latentmax))
+                    #d = LogNormal(P.latentshape, P.latentscale)
+                    #st = max(P.latentmin, min(Int(ceil(rand(d))), P.latentmax))
+                    st = Int(round(rand(Truncated(LogNormal(P.latentshape, P.latentscale), P.latentmin, P.latentmax))))
                 end
         :CAR   => st = rand(P.carriagemin:P.carriagemax) ## fixed 50 days for carriage?
         :SYMP  => st = rand(Truncated(Poisson(P.symptomaticmean), P.symptomaticmin, P.symptomaticmax))
@@ -182,8 +173,7 @@ function statetime(x::Human, P::HiaParameters)
                     if x.invdeath
                         st = rand(Truncated(Poisson(P.hospitalmean_death), P.hospitalmin_death, P.hospitalmax_death))
                     else 
-                        ## based on disease specific.
-                        st = rand(P.hospitalmin_nodeath:P.hospitalmax_nodeath)     
+                        st = hosplengthofstay(x, P)
                     end
                 end       
         :REC   => st = rand(P.recoveredmin:P.recoveredmax)
@@ -194,6 +184,76 @@ function statetime(x::Human, P::HiaParameters)
 end
 
 
+function hosplengthofstay(x::Human, P::HiaParameters)::Int32
+    ## this function is called by statetime() when the person is invasive
+    ##  when the person is invasive, with no death - we want length of stay 
+    ##  based on type of invasive disease and age.  see parameter file for source.
+    st::Int32 
+    
+    if x.age <= 365     ## 1 year
+        if x.invtype == MEN
+            st = rand(10:14)
+        elseif x.invtype == PNM
+            st = rand(3:7)
+        elseif x.invtype == NPNM
+            st = rand(7:11)
+        end                             
+    elseif x.age > 365 && x.age <= 2555 # 1-7 years
+        if x.invtype == MEN
+            st = rand(7:11)
+        elseif x.invtype == PNM
+            st = rand(2:6)
+        elseif x.invtype == NPNM
+            st = rand(3:7)
+        end                
+    elseif x.age > 2555 && x.age <= 6205 #7 - 17
+        if x.invtype == MEN
+            st = rand(3:7)
+        elseif x.invtype == PNM
+            st = rand(3:7)
+        elseif x.invtype == NPNM
+            st = rand(5:9)
+        end                
+    elseif x.age > 6205 && x.age <= 21535 # 17 - 59
+        if x.invtype == MEN
+            st = rand(5:9)
+        elseif x.invtype == PNM
+            st = rand(6:10)
+        elseif x.invtype == NPNM
+            st = rand(7:11)
+        end                
+    elseif x.age > 21535 && x.age <= 29200 ## 59 - 80
+        if x.invtype == MEN
+            st = rand(9:13)
+        elseif x.invtype == PNM
+            st = rand(6:10)
+        elseif x.invtype == NPNM
+            st = rand(9:13)
+        end
+    else x.age > 29200 ## 80+
+        if x.invtype == MEN
+            st = rand(17:21)
+        elseif x.invtype == PNM
+            st = rand(6:10)
+        elseif x.invtype == NPNM
+            st = rand(10:14)
+        end                
+    end
+
+end
+
+
+function jackson_agegroup(age::Integer)
+    ## Jackson Agegroups!
+    ## these agegroups only applicable for contacts - used in function dailycontacts()
+    @match age begin
+        0:365       => 1  # 0 - 1  ## completed first year
+        366:1460    => 2  # 2 - 4  ## completed upto 4 years
+        1461:3285   => 3  # 5- 10  ## starting 5th year, completed 10 years
+        3285:36501  => 4  # 10+
+        _           => error("Hia Model => age too large in jackson_agegroup()")
+    end
+end
 
 function beta_agegroup(age::Integer)
     ## returns one of the beta values from the parameter list

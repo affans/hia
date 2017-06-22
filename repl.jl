@@ -93,19 +93,19 @@ end
 
 function runprofile()
     # run to compile
-    P = HiaParameters(simtime = 1, gridsize = 100000)
-    main(1, P)
+    tic()
+    P = HiaParameters(simtime = 1*365, betaone=0.9, betatwo=0.9, betathree=0.9, betafour = 0.9)
     Profile.clear()
-    P = HiaParameters(simtime = 365*1, gridsize = 100000)
-    @profile h, dc = main(1, P)
-    ProfileView.view()            
+    @profile main(1, P, n -> n)
+    toc()
+    ProfileView.view()        
 end
 
 ##  --- CHANGE NUMBER OF PROCS --- ###
 
-@everywhere P = HiaParameters(simtime = 50*365,  betaone=0.073, betatwo=0.053, betathree=0.0425, betafour = 0.07)
+@everywhere P = HiaParameters(simtime = 50*365,  betaone=0.0727, betatwo=0.0528, betathree=0.0425, betafour = 0.07)
 #@everywhere P = HiaParameters(simtime = 1*365, betaone=0.9, betatwo=0.9, betathree=0.9, betafour = 0.9)
-results = runmain_parallel(200, P);
+results = runmain_parallel(50, P);
 
 # function scratch()
 #  P = HiaParameters(simtime = 100, gridsize = 100000)

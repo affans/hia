@@ -91,7 +91,6 @@ function app(h::Human, P::HiaParameters)
     ## update age, agegroup, natural death, and protectionlvl at 5 years old
     ## output: age++, might possibly die
     h.age += 1   ## increase age by one
-    
     tage = h.age ## store as temp
     
     # check at a yearly level
@@ -155,7 +154,7 @@ end
 function dailycontact(x::Human, P::HiaParameters, h::Array{Human}, ag1, ag2, ag3, ag4, newborns, first, second, third)
     ## the daily contact with a human.. tranmission can occure
     rn = rand()
-    ag = agegroup(x.age) ## determine the Jackson agegroup -- NOT THE SAME AS BETA AGEGROUP
+    ag = jackson_agegroup(x.age) ## determine the Jackson agegroup -- NOT THE SAME AS BETA AGEGROUP
     ## determine which row they are in for Jackson contact matrix       
     if ag == 1 
         dist = ag1

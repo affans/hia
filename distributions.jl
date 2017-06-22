@@ -108,7 +108,7 @@ function distribution_age()
 end
 
 function distribution_ageofdeath(a::Int64, g::GENDER)
-    ##matlab curve fitting, 4th degree polynomial...no "center of scale", "bisquare"
+    ##matlab curve fitting, 6th/4th degree polynomial...no "center of scale", "bisquare"
     rval = 0.0
     if g == MALE
        p1 =   2.556e-11  #(1.021e-12, 5.01e-11)
@@ -157,4 +157,5 @@ function distribution_contact_transitions()
 #           0.1647 0.3293 0.5719 1.0]
     return mat, cmat
 end
+
 

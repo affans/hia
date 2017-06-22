@@ -64,10 +64,10 @@ function main(simulationnumber::Int64, P::HiaParameters, cb)
 end
 
     
-#P = HiaParameters(simtime = 100, gridsize = 100000, betaone = 1, betatwo = 1, betathree = 1, betafour = 1)
-#humans = Array{Human}(P.gridsize);
-#initialize(humans, P)
-#demographics(humans, P)
+# P = HiaParameters(simtime = 100, gridsize = 100000, betaone = 1, betatwo = 1, betathree = 1, betafour = 1)
+# humans = Array{Human}(P.gridsize);
+# initialize(humans, P)
+# demographics(humans, P)
 #dailycontact(humans[hi], P, humans, ag1, ag2, ag3, ag4, n, f, s, t)
 #find(x -> x.swap != UNDEF, humans)
 
