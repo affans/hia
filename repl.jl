@@ -7,7 +7,7 @@
 # end
 
 
-addprocs(50)
+addprocs(60)
 @everywhere include("main.jl")
   
 
@@ -80,6 +80,7 @@ function processresults_ag(agegroup, numofdays, numofsims, results)
     if !isdir(dirname) 
       mkdir(dirname)
     end
+
     writedlm(string(dirname, "/latent.dat"),  lm)
     writedlm(string(dirname, "/carriage.dat"), cm)
     writedlm(string(dirname, "/symptomatic.dat"), sm)
@@ -87,6 +88,10 @@ function processresults_ag(agegroup, numofdays, numofsims, results)
     writedlm(string(dirname, "/recovered.dat"), rm)
     writedlm(string(dirname, "/deadnatural.dat"), dn)
     writedlm(string(dirname, "/deadinvasive.dat"), di)
+
+    ## data files created, running plot script
+    println("...data files created, running Rscript")
+    run(`Rscript plots.R $dirname`)
     
     writedlm(string("groupcounts.dat"), grpcnts)
 end
@@ -103,9 +108,10 @@ end
 
 ##  --- CHANGE NUMBER OF PROCS --- ###
 
-@everywhere P = HiaParameters(simtime = 50*365,  betaone=0.0727, betatwo=0.0528, betathree=0.0425, betafour = 0.07)
-#@everywhere P = HiaParameters(simtime = 1*365, betaone=0.9, betatwo=0.9, betathree=0.9, betafour = 0.9)
-results = runmain_parallel(50, P);
+# @everywhere P = HiaParameters(simtime = 50*365,  betaone=0.0725, betatwo=0.0525, betathree=0.0425, betafour = 0.07)
+
+@everywhere P = HiaParameters(simtime = 30*365,  betaone=0.0725, betatwo=0.0525, betathree=0.0425, betafour = 0.0699)
+results = runmain_parallel(500, P);
 
 # function scratch()
 #  P = HiaParameters(simtime = 100, gridsize = 100000)

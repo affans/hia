@@ -2,13 +2,13 @@
 function todo()
     warn("Hia model => √ calculate probability distribution for death, and implement code")
     warn("Hia model => √ update pathtaken() when vaccine is implemented")    
-    warn("Hia model => remove find functions, and optimize - demographics")
-    warn("Hia model => check if dosesgiven > 0 => pvaccine == true.")
-    warn("Hia model => check if bvaccine = true => dosesgiven = 3.")
+    warn("Hia model => √ remove find functions, and optimize - demographics")
+    warn("Hia model => √ check if dosesgiven > 0 => pvaccine == true.")
+    warn("Hia model => √ check if bvaccine = true => dosesgiven = 3.")
     warn("Hia model => √ ageplusplus can be absorbed into the daily lattice update function")
     warn("Hia model => √ presymptomatic is also infectious - reduction 50% - done preliminary")
     warn("Hia model => √ if invasive before, always mark as false")   
-    warn("Hia model => Implement death in invasive compartment")
+    warn("Hia model => √ Implement death in invasive compartment")
     warn("Hia model => √ Use four beta values instead of one")
     warn("Hia model => think of a way to implement plotting for changing age distribution")
     warn("Hia model => √ algorithm to track a human")
@@ -16,7 +16,10 @@ function todo()
     warn("Hia model => verify age brackets for contact matrix")
     warn("Hia model => clean up cmt-ag variables in main()")  
     warn("Hia model => clean up bins variables in main()")  
-    warn("Hia model => disease specific hospitalization length of stay")  
+    warn("Hia model => √ disease specific hospitalization length of stay")  
+    warn("Hia model => in groupcounts - processed multiple times in processresults()")  
+    
+    
     
     
 end
