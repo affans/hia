@@ -26,7 +26,7 @@ function main(simulationnumber::Int64, P::HiaParameters, cb)
     #println("typeof progress: $(typeof(progress))")
 
     #P = HiaParameters(simtime = 3650, gridsize = 100000)
-    DC = DataCollection(P.simtime)
+    DC = DataCollection(P.simtime + P.vaccinetime) #set P.vaccinetime = 0 to run without vaccine. 
 
     ## setup human grid   
     humans = Array{Human}(P.gridsize);
@@ -35,7 +35,9 @@ function main(simulationnumber::Int64, P::HiaParameters, cb)
 
     ## random latent human
     tracking = insertrandom(humans, P, LAT)
-    
+
+
+
     ## get the distributions for contact strcuture to pass to dailycontact()
     #println("getting distributions")
     mmt, cmt = distribution_contact_transitions()  ## get the contact transmission matrix. 
@@ -44,30 +46,51 @@ function main(simulationnumber::Int64, P::HiaParameters, cb)
     ag3 = Categorical(mmt[3, :])
     ag4 = Categorical(mmt[4, :])
 
-
     ## main time loop
     for time = 1:P.simtime
         ## start of day.... get bins
-        n = find(x -> x.age < 365, humans)
-        f = find(x -> x.age >= 365 && x.age < 1460, humans)
-        s = find(x -> x.age >= 1460 && x.age < 3285, humans)    
-        t = find(x -> x.age >= 3285, humans)
+        n = filter(x -> x.age < 365, humans)
+        f = filter(x -> x.age >= 365 && x.age < 1460, humans)
+        s = filter(x -> x.age >= 1460 && x.age < 3285, humans)    
+        t = filter(x -> x.age >= 3285, humans)
+     
         for i in eachindex(humans)
-            dailycontact(humans[i], P, humans, ag1, ag2, ag3, ag4, n, f, s, t)
+            dailycontact(humans[i], P, ag1, ag2, ag3, ag4, n, f, s, t)
             tpp(humans[i], P)
             app(humans[i], P)
             update(humans[i], P, DC, time)          
         end
-        cb(1)                        
+        cb(1)            
     end
+
+    ## main vaccine loop.. if P.vaccinetime == 0, this loop is skipped automatically. 
+    for time = (P.simtime + 1):(P.simtime + P.vaccinetime)
+        ## start of day.... get bins
+        n = filter(x -> x.age < 365, humans)
+        f = filter(x -> x.age >= 365 && x.age < 1460, humans)
+        s = filter(x -> x.age >= 1460 && x.age < 3285, humans)    
+        t = filter(x -> x.age >= 3285, humans)
+     
+        for i in eachindex(humans)
+            dailycontact(humans[i], P, ag1, ag2, ag3, ag4, n, f, s, t)
+            tpp(humans[i], P)
+            app(humans[i], P)
+            vcc(humans[i], P)    ## add vaccine specific code. 
+            update(humans[i], P, DC, time)          
+        end
+        cb(1)    
+    end
+
     return humans, DC
 end
 
+
+
     
-# P = HiaParameters(simtime = 100, gridsize = 100000, betaone = 1, betatwo = 1, betathree = 1, betafour = 1)
-# humans = Array{Human}(P.gridsize);
-# initialize(humans, P)
-# demographics(humans, P)
+#  P = HiaParameters(simtime = 100, gridsize = 100000, betaone = 1, betatwo = 1, betathree = 1, betafour = 1)
+  #humans = Array{Human}(P.gridsize);
+  #initialize(humans, P)
+  #demographics(humans, P)
 #dailycontact(humans[hi], P, humans, ag1, ag2, ag3, ag4, n, f, s, t)
 #find(x -> x.swap != UNDEF, humans)
 

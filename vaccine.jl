@@ -1,9 +1,4 @@
 
-function primary(h::Human)
-  ## this function turns on primary vaccination  
-  h.pvaccine = rand() < 0.95 ? true : false
-end
-
 function dose(h::Human)
   ## this function applies a dose 
   if h.pvaccine
@@ -13,6 +8,7 @@ function dose(h::Human)
     end
     h.plvl = protection(h)  ## reapply protection level. 
   end
+  return nothing
 end
 
 function booster(h::Human)
@@ -22,4 +18,18 @@ function booster(h::Human)
         h.bvaccine = rand() < 0.90 ? true : false
         h.plvl = protection(h)
     end
+    return nothing
+end
+
+
+function vcc(x::Human, P::HiaParameters)
+  if x.age == P.doseonetime 		
+      ## turn on primary vaccine
+      x.pvaccine = rand() < 0.95 ? true : false
+      dose(x)		
+  elseif x.age == P.dosetwotime || x.age == P.dosethreetime 		
+      dose(x)		
+  elseif x.age == P.boostertime		
+      booster(x)		
+  end
 end

@@ -81,7 +81,7 @@ function newborn(h::Human)
     h.agegroup_beta = beta_agegroup(0)
     h.gender = rand() < 0.5 ? FEMALE : MALE
     h.meetcnt = 0
-    h.dailycontact = 0
+    h.dailycontact = 0   ## deprecated, no one cares. 
     h.pvaccine = false 
     h.bvaccine = false 
     h.dosesgiven = 0
@@ -151,10 +151,10 @@ function tpp(x::Human, P::HiaParameters)
 end
 
 
-function dailycontact(x::Human, P::HiaParameters, h::Array{Human}, ag1, ag2, ag3, ag4, newborns, first, second, third)
+function dailycontact(x::Human, P::HiaParameters, ag1, ag2, ag3, ag4, newborns, first, second, third)
     ## the daily contact with a human.. tranmission can occure
     rn = rand()
-    ag = jackson_agegroup(x.age) ## determine the Jackson agegroup -- NOT THE SAME AS BETA AGEGROUP
+    ag = jackson_agegroup(x.age) ## determine the Jackson agegroup 
     ## determine which row they are in for Jackson contact matrix       
     if ag == 1 
         dist = ag1
@@ -167,28 +167,27 @@ function dailycontact(x::Human, P::HiaParameters, h::Array{Human}, ag1, ag2, ag3
     end  
     agtocontact = rand(dist) ## pick a random number from the distribution
     if agtocontact == 1
-        randhuman = rand(newborns)
+        x_rnd = rand(newborns)
     elseif agtocontact == 2
-        randhuman = rand(first)            
+        x_rnd = rand(first)            
     elseif agtocontact == 3
-        randhuman = rand(second)            
+        x_rnd = rand(second)            
     elseif agtocontact == 4
-        randhuman = rand(third)            
+        x_rnd = rand(third)            
     else
         error("cant happen")
     end        
     ## at this point, human x and randhuman are going to contact each other.         
     ## check if transmission criteria is satisfied
-    t = (x.health == SUSC || x.health == REC) && (h[randhuman].health == CAR || h[randhuman].health == SYMP)
-    y = (h[randhuman].health == SUSC || h[randhuman].health == REC) && (x.health == CAR || x.health == SYMP)  
+    t = (x.health == SUSC || x.health == REC) && (x_rnd.health == CAR || x_rnd.health == SYMP)
+    y = (x_rnd.health == SUSC || x_rnd.health == REC) && (x.health == CAR || x.health == SYMP)  
     if t
-        transmission(x, h[randhuman], P)
+        transmission(x, x_rnd, P)
     elseif y 
-        transmission(h[randhuman], x, P)
-    end        
-    x.dailycontact = randhuman
+        transmission(x_rnd, x, P)
+    end          
     x.meetcnt += 1
-    h[randhuman].meetcnt += 1       
+    x_rnd.meetcnt += 1       
 end
 
 

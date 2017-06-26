@@ -7,7 +7,7 @@
 # end
 
 
-addprocs(60)
+addprocs(50)
 @everywhere include("main.jl")
   
 
@@ -18,12 +18,12 @@ function runmain_parallel(numberofsims, P::HiaParameters)
     print("starting pmap...\n") 
     
     # cb is the callback function. It updates the progress bar
-    results = pmap((cb, x) -> main(x, P, cb), Progress(numberofsims*P.simtime), 1:numberofsims, passcallback=true)   
+    totalprogress = numberofsims*(P.simtime + P.vaccinetime)
+    results = pmap((cb, x) -> main(x, P, cb), Progress(totalprogress), 1:numberofsims, passcallback=true)   
      ## process all five agegroups
-    println("starting processing of results")
-    for a = 1:5 ## five age groups
-      processresults_ag(a, P.simtime, numberofsims, results)      
-    end
+    
+    processresults_ag((P.simtime + P.vaccinetime), numberofsims, results)      
+    
     return results
 end
 
@@ -34,65 +34,64 @@ function runmain()
   results = main(1, P, nothing)
 end
 
-function processresults_ag(agegroup, numofdays, numofsims, results)
-    if agegroup < 0 || agegroup > 5 
-      error("Hia model => processing results: invalid agegroup")
+function processresults_ag(numofdays, numofsims, results)
+    ## numofdays - total number of days (ie, pass in P.simtime + P.vaccinetime)
+    println("")
+    for agegroup = 1:5
+      println("...processing agegroup: $agegroup")
+      ## create matrices, for each data collection variable to put the simulation results. 
+      ## matrix is numberofdays x numberofsims -- ie, each column represents a simulation
+      lm = Matrix{Int64}(numofdays, numofsims)  
+      cm = Matrix{Int64}(numofdays, numofsims)
+      sm = Matrix{Int64}(numofdays, numofsims)
+      im = Matrix{Int64}(numofdays, numofsims)
+      rm = Matrix{Int64}(numofdays, numofsims)    
+      dn = Matrix{Int64}(numofdays, numofsims) ## dead natural
+      di = Matrix{Int64}(numofdays, numofsims) ## dead invasive
+      
+     
+      for i = 1:length(results)  # for each simulation
+        dc = results[i][2]   ## get the DC part of the results for each simulation
+        @unpack lat, car, sym, inv, rec, deadn, deadi = dc ## unpack datacollection vectors
+        ## these DC variables are matrices of size numofdays x 5 (where 5 is the number of agegroups)
+
+        lm[:, i] = lat[:, agegroup] 
+        cm[:, i] = car[:, agegroup]
+        sm[:, i] = sym[:, agegroup]
+        im[:, i] = inv[:, agegroup]
+        rm[:, i] = rec[:, agegroup]
+        dn[:, i] = deadn[:, agegroup]
+        di[:, i] = deadi[:, agegroup]
+      end
+      dirname = string("Ag", agegroup)
+      if !isdir(dirname) 
+        mkdir(dirname)
+      end
+
+      writedlm(string(dirname, "/latent.dat"),  lm)
+      writedlm(string(dirname, "/carriage.dat"), cm)
+      writedlm(string(dirname, "/symptomatic.dat"), sm)
+      writedlm(string(dirname, "/invasive.dat"), im)
+      writedlm(string(dirname, "/recovered.dat"), rm)
+      writedlm(string(dirname, "/deadnatural.dat"), dn)
+      writedlm(string(dirname, "/deadinvasive.dat"), di)
+
+      ## data files created, running plot script
+      println("...data files created, running Rscript")
+      run(`Rscript plots.R $dirname`)
+    
     end
 
-    println("...processing agegroup: $agegroup")
-    ## create 5 matrices, for each data collection variable
-    ## matrix is numberofdays x numberofsims -- ie, each column represents a simulation
-    lm = Matrix{Int64}(numofdays, numofsims)  
-    cm = Matrix{Int64}(numofdays, numofsims)
-    sm = Matrix{Int64}(numofdays, numofsims)
-    im = Matrix{Int64}(numofdays, numofsims)
-    rm = Matrix{Int64}(numofdays, numofsims)    
-    dn = Matrix{Int64}(numofdays, numofsims) ## dead natural
-    di = Matrix{Int64}(numofdays, numofsims) ## dead invasive
-    
-
-    ## group counts - number of rows - 5 for 5 groups
-    grpcnts = zeros(Int64, 5, numofsims)
-
-    for i = 1:length(results)  # for each simulation
-      dc = results[i][2]   ## get the DC part of the results for each simulation
-      @unpack lat, car, sym, inv, rec, deadn, deadi = dc ## unpack datacollection vectors
-      ## these DC variables are matrices of size numofdays x 5 (where 5 is the number of agegroups)
-
-      lm[:, i] = lat[:, agegroup] 
-      cm[:, i] = car[:, agegroup]
-      sm[:, i] = sym[:, agegroup]
-      im[:, i] = inv[:, agegroup]
-      rm[:, i] = rec[:, agegroup]
-      dn[:, i] = deadn[:, agegroup]
-      di[:, i] = deadi[:, agegroup]
-      
-
+    ## group counts - columns represent group sizes
+    grpcnts = zeros(Int64, numofsims, 5)
+    for i = 1:length(results)      
       h = results[i][1] 
-      grpcnts[1, i] = length(find(x -> x.agegroup_beta == 1, h))
-      grpcnts[2, i] = length(find(x -> x.agegroup_beta == 2, h))
-      grpcnts[3, i] = length(find(x -> x.agegroup_beta == 3, h))
-      grpcnts[4, i] = length(find(x -> x.agegroup_beta == 4, h))
-      grpcnts[5, i] = length(find(x -> x.agegroup_beta == 5, h))
-      
+      grpcnts[i, 1] = length(find(x -> x.agegroup_beta == 1, h))
+      grpcnts[i, 2] = length(find(x -> x.agegroup_beta == 2, h))
+      grpcnts[i, 3] = length(find(x -> x.agegroup_beta == 3, h))
+      grpcnts[i, 4] = length(find(x -> x.agegroup_beta == 4, h))
+      grpcnts[i, 5] = length(find(x -> x.agegroup_beta == 5, h))
     end
-    dirname = string("Ag", agegroup)
-    if !isdir(dirname) 
-      mkdir(dirname)
-    end
-
-    writedlm(string(dirname, "/latent.dat"),  lm)
-    writedlm(string(dirname, "/carriage.dat"), cm)
-    writedlm(string(dirname, "/symptomatic.dat"), sm)
-    writedlm(string(dirname, "/invasive.dat"), im)
-    writedlm(string(dirname, "/recovered.dat"), rm)
-    writedlm(string(dirname, "/deadnatural.dat"), dn)
-    writedlm(string(dirname, "/deadinvasive.dat"), di)
-
-    ## data files created, running plot script
-    println("...data files created, running Rscript")
-    run(`Rscript plots.R $dirname`)
-    
     writedlm(string("groupcounts.dat"), grpcnts)
 end
 
@@ -110,16 +109,13 @@ end
 
 # @everywhere P = HiaParameters(simtime = 50*365,  betaone=0.0725, betatwo=0.0525, betathree=0.0425, betafour = 0.07)
 
-@everywhere P = HiaParameters(simtime = 30*365,  betaone=0.0725, betatwo=0.0525, betathree=0.0425, betafour = 0.0699)
+@everywhere P = HiaParameters(simtime = 30*365, vaccinetime = 10*365, betaone=0.0725, betatwo=0.0526, betathree=0.0425, betafour = 0.0699)
 results = runmain_parallel(500, P);
 
-# function scratch()
-#  P = HiaParameters(simtime = 100, gridsize = 100000)
-#   results = main(1, P, x -> x + 1)
-#   DC = DataCollection(P.simtime)
-
-
-
+#include("main.jl")
+#P = HiaParameters(simtime = 1*365,vaccinetime = 0, betaone=0.9, betatwo=0.9, betathree=0.9, betafour = 0.9)
+#main(1, P, n -> 1)
+ 
 
 
   # @unpack lat, car, sym, inv, rec = results[2] ## unpack datacollection vectors

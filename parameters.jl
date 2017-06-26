@@ -6,9 +6,10 @@
 ## main system parameters
 @with_kw immutable HiaParameters @deftype Int32
     # general parameters
-    simtime = 365       ## time of simulation 40 years in days
-    gridsize = 100000   ## size of population 
-    inital_latent = 1   ## initial prevalence
+    simtime = 365         ## time of simulation 40 years in days
+    gridsize = 100000     ## size of population 
+    inital_latent = 1     ## initial prevalence    
+    vaccinetime = 0       ## years (in days) added on top of simtime
     
     ## four betas, corresponding to CDC (U shaped incidence data) age groups. 
     betaone::Float32 = 0.05    ## 0-2
@@ -73,8 +74,8 @@
 
     ## primary dosage at 2, 4, 6 months
     doseonetime    = 60   ## 2 months - 60 days, 
-    dosetwotime    = 120 
-    dosethreetime  = 180
+    dosetwotime    = 120  ## 4 months
+    dosethreetime  = 180  ## 6 months
     boostertime    = 450  ## booster given at 15 months.      
 
     ## costs 
@@ -83,5 +84,8 @@
     disability_minorcost = 0 
     disability_majorcost = 0
     productivitycost = 0
+    meningitiscost = 0
+    pneumoniacost = 0
+    npnmcost = 0
 
 end
