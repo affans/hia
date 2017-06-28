@@ -6,7 +6,7 @@ using ParallelDataTransfer
 using DataArrays, DataFrames
 using ProgressMeter
 using PmapProgressMeter
-
+using JLD
 #using Gadfly
 #using Profile
 
@@ -17,27 +17,25 @@ include("humans.jl")
 include("vaccine.jl")
 include("functions.jl")
 
-function main(simulationnumber::Int64, P::HiaParameters, cb)        
-    ## check if we need to create an instance of a single progress bar
-    ## cb is the callback function to update progress bar if running pmap progress bar    
-    #progress = cb == nothing ? Progress(P.simtime, 1) : nothing
+function seed(simulationnumber::Int64, P::HiaParameters, cb)        
+    ## simulationnumber is not needed for now. 
+    ## savejld -- should we save the humans/DC data after the simulations have ended?
+    ## loadjld -- should we load old humans/DC data     
     
-    #pg = Progress(P.simtime)
-    #println("typeof progress: $(typeof(progress))")
-
-    #P = HiaParameters(simtime = 3650, gridsize = 100000)
-    DC = DataCollection(P.simtime + P.vaccinetime) #set P.vaccinetime = 0 to run without vaccine. 
-
+    #wait(remotecall(info, 1, "simulation: $simulationnumber"))
+    
+    
+    ## TODO: Print message, what are we doing?
+    humans = Array{Human}(P.gridsize);    
+    DC = DataCollection(P.simtime) #set P.vaccinetime = 0 to run without vaccine. 
+    
     ## setup human grid   
-    humans = Array{Human}(P.gridsize);
     initialize(humans, P)
     demographics(humans, P)
-
     ## random latent human
     tracking = insertrandom(humans, P, LAT)
-
-
-
+    
+    
     ## get the distributions for contact strcuture to pass to dailycontact()
     #println("getting distributions")
     mmt, cmt = distribution_contact_transitions()  ## get the contact transmission matrix. 
@@ -47,14 +45,14 @@ function main(simulationnumber::Int64, P::HiaParameters, cb)
     ag4 = Categorical(mmt[4, :])
 
     ## main time loop
-    for time = 1:P.simtime
+    @inbounds for time = 1:P.simtime
         ## start of day.... get bins
         n = filter(x -> x.age < 365, humans)
         f = filter(x -> x.age >= 365 && x.age < 1460, humans)
         s = filter(x -> x.age >= 1460 && x.age < 3285, humans)    
         t = filter(x -> x.age >= 3285, humans)
      
-        for i in eachindex(humans)
+        @inbounds for i in eachindex(humans)
             dailycontact(humans[i], P, ag1, ag2, ag3, ag4, n, f, s, t)
             tpp(humans[i], P)
             app(humans[i], P)
@@ -62,29 +60,51 @@ function main(simulationnumber::Int64, P::HiaParameters, cb)
         end
         cb(1)            
     end
+    hf = string("./serial/hser", simulationnumber, ".jld")
+    save(hf, "humans", humans, "DC", DC)
+    return humans, DC
+end
 
-    ## main vaccine loop.. if P.vaccinetime == 0, this loop is skipped automatically. 
-    for time = (P.simtime + 1):(P.simtime + P.vaccinetime)
+
+function pastthirty(simulationnumber, vaccineon, P::HiaParameters, cb)
+    fn = string("./serial/hser", simulationnumber, ".jld")
+    humans = load(fn)["humans"]     ## this gives a Array{Human} 
+
+    DC = DataCollection(P.vaccinetime)     ## setup a new data collection instance for vaccine
+    
+    mmt, cmt = distribution_contact_transitions()  ## get the contact transmission matrix. 
+    ag1 = Categorical(mmt[1, :])
+    ag2 = Categorical(mmt[2, :])
+    ag3 = Categorical(mmt[3, :])
+    ag4 = Categorical(mmt[4, :])
+    
+    @inbounds for time = 1:P.vaccinetime
         ## start of day.... get bins
         n = filter(x -> x.age < 365, humans)
         f = filter(x -> x.age >= 365 && x.age < 1460, humans)
         s = filter(x -> x.age >= 1460 && x.age < 3285, humans)    
         t = filter(x -> x.age >= 3285, humans)
      
-        for i in eachindex(humans)
+        @inbounds for i in eachindex(humans)
             dailycontact(humans[i], P, ag1, ag2, ag3, ag4, n, f, s, t)
             tpp(humans[i], P)
             app(humans[i], P)
-            vcc(humans[i], P)    ## add vaccine specific code. 
+            if vaccineon
+                vcc(humans[i], P)    ## add vaccine specific code. 
+            end
             update(humans[i], P, DC, time)          
         end
         cb(1)    
     end
 
+    if vaccineon
+        hf = string("./serial/vhser", simulationnumber, ".jld")
+    else 
+        hf = string("./serial/nvser", simulationnumber, ".jld")
+    end
+    save(hf, "humans", humans, "DC", DC)
     return humans, DC
 end
-
-
 
     
 #  P = HiaParameters(simtime = 100, gridsize = 100000, betaone = 1, betatwo = 1, betathree = 1, betafour = 1)
