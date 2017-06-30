@@ -7,7 +7,7 @@
 # end
 
 using Lumberjack
-add_truck(LumberjackTruck("simulationrun.log"), "my-file-logger")
+add_truck(LumberjackTruck("processrun.log"), "my-file-logger")
 remove_truck("console")
 
 addprocs(50)
@@ -39,19 +39,21 @@ end
 
 
 
-function process(numofsims)
+function readjld(numofsims, prefix)
   ## this files reads all the serialized datacollection files from a folder
   ## and returns an array with these -- can be sent to process_dc()  
+  ## prefix in the form of "./serial/(v)(nv)(h)ser.jld"
   info("process(): running processing for number of sims: $numofsims")
   info("process(): ... see method for description")  
   info("process(): uses pmap, how many procs? $(nprocs())")
+  info("process(): prcessing prefix: $prefix")  
   info("process(): starting reading of hdf5/jld files using pmap")
   a = pmap(1:numofsims) do x
-    filename = string("./serial/vhser", x, ".jld")
+    filename = string(prefix, x, ".jld")
     return load(filename)["DC"]  
   end
-  info("process(): pmap finished, all files are loaded into memory... passing off to Rprocess")
-  processresults(a)
+  info("process(): pmap finished, all files are loaded into memory... function has returned. ")
+  return a;
 end
 
 function processresults(results)
@@ -63,9 +65,9 @@ function processresults(results)
     numofsims = length(results)         ## this gives the number of simulations
     numofdays = size(results[1].lat, 1) ## this gives the number of days (we pick the latent counter from the first simulation to get this.. )
 
-    println("processing results")
+    info("processing results")
     for agegroup = 1:5
-      println("...processing agegroup: $agegroup")
+      info("...processing agegroup: $agegroup")
       ## create matrices, for each data collection variable to put the simulation results. 
       ## matrix is numberofdays x numberofsims -- ie, each column represents a simulation
       lm = Matrix{Int64}(numofdays, numofsims)  
@@ -93,7 +95,7 @@ function processresults(results)
       if !isdir(dirname) 
         mkdir(dirname)
       end
-
+      info("writing files")
       writedlm(string(dirname, "/latent.dat"),  lm)
       writedlm(string(dirname, "/carriage.dat"), cm)
       writedlm(string(dirname, "/symptomatic.dat"), sm)
@@ -110,9 +112,10 @@ function processresults(results)
 end
 
 function main(numofsims)
-  info("starting repl.jl with processors: $(nprocs())")
+  info("starting simulations with processors: $(nprocs())")
+  info("number of simulations set to: $numofsims")
   info("setting up parameters...")
-  @everywhere P = HiaParameters(simtime = 30*365, vaccinetime = 10*365, betaone=0.0724, betatwo=0.0526, betathree=0.0425, betafour = 0.0699)
+  @everywhere P = HiaParameters(simtime = 30*365, vaccinetime = 10*365, betaone=0.0722, betatwo=0.0526, betathree=0.0426, betafour = 0.0699)
   info("\n $P")
   info("checking if ./serial exists")
   if isdir("./serial") 
@@ -120,8 +123,7 @@ function main(numofsims)
   else 
     info("...not found...exiting!")
     throw("./serial does not exist")
-  end
-  info("number of simulations set to: $numofsims")
+  end  
   info("starting main functions...")
   runseed(numofsims, P);
   runpastthirty(numofsims, true, P);
@@ -129,8 +131,11 @@ function main(numofsims)
   #testprocess(50)
   info("simulation scenarios finished!")
 end
-
-main(500)
+ 
+#main(500)
+#process(500, "./serial/hser")
+#process(500, "./serial/vhser")
+#process(500, "./serial/nvhser")
 
 
 

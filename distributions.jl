@@ -131,14 +131,11 @@ function distribution_ageofdeath(a::Int64, g::GENDER)
 end
 
 function distribution_contact_transitions()
+    ## matrix from the Jackson paper.
     con = [2.11 0.15 0.53 0.03
            0.55 0.40 0.50 0.12
            0.56 3.68 3.61 0.13
            0.55 0.55 0.81 1.43]
-    # con = [1 0 0 0
-    #        0 1 0 0
-    #        0 0 1 0
-    #        0 0 0 1]
 
     mat = zeros(Float64, 4, 4)
     cmat = zeros(Float64, 4, 4)
