@@ -194,7 +194,7 @@ function hosplengthofstay(x::Human, P::HiaParameters)::Int32
     st::Int32 
     
     if x.age <= 365     ## 1 year
-        if x.invtype == MEN
+        if x.invtype == MENNOD || x.invtype == MENMAJ || x.invtype == MENMIN
             st = rand(10:14)
         elseif x.invtype == PNM
             st = rand(3:7)
@@ -202,7 +202,7 @@ function hosplengthofstay(x::Human, P::HiaParameters)::Int32
             st = rand(7:11)
         end                             
     elseif x.age > 365 && x.age <= 2555 # 1-7 years
-        if x.invtype == MEN
+        if x.invtype == MENNOD || x.invtype == MENMAJ || x.invtype == MENMIN
             st = rand(7:11)
         elseif x.invtype == PNM
             st = rand(2:6)
@@ -210,7 +210,7 @@ function hosplengthofstay(x::Human, P::HiaParameters)::Int32
             st = rand(3:7)
         end                
     elseif x.age > 2555 && x.age <= 6205 #7 - 17
-        if x.invtype == MEN
+        if x.invtype == MENNOD || x.invtype == MENMAJ || x.invtype == MENMIN
             st = rand(3:7)
         elseif x.invtype == PNM
             st = rand(3:7)
@@ -218,7 +218,7 @@ function hosplengthofstay(x::Human, P::HiaParameters)::Int32
             st = rand(5:9)
         end                
     elseif x.age > 6205 && x.age <= 21535 # 17 - 59
-        if x.invtype == MEN
+        if x.invtype == MENNOD || x.invtype == MENMAJ || x.invtype == MENMIN
             st = rand(5:9)
         elseif x.invtype == PNM
             st = rand(6:10)
@@ -226,7 +226,7 @@ function hosplengthofstay(x::Human, P::HiaParameters)::Int32
             st = rand(7:11)
         end                
     elseif x.age > 21535 && x.age <= 29200 ## 59 - 80
-        if x.invtype == MEN
+        if x.invtype == MENNOD || x.invtype == MENMAJ || x.invtype == MENMIN
             st = rand(9:13)
         elseif x.invtype == PNM
             st = rand(6:10)
@@ -234,7 +234,7 @@ function hosplengthofstay(x::Human, P::HiaParameters)::Int32
             st = rand(9:13)
         end
     else x.age > 29200 ## 80+
-        if x.invtype == MEN
+        if x.invtype == MENNOD || x.invtype == MENMAJ || x.invtype == MENMIN
             st = rand(17:21)
         elseif x.invtype == PNM
             st = rand(6:10)

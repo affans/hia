@@ -1,7 +1,7 @@
 ## main system enums
 @enum HEALTH SUSC LAT CAR SYMP INV REC DEAD UNDEF
 @enum GENDER MALE=1 FEMALE=2
-@enum INVTYPE NOINV=0 MEN=1 PNM=2 NPNM=3 
+@enum INVTYPE NOINV=0 MENNOD=1 MENMAJ=2 MENMIN=3 PNM=4 NPNM=5
 
 ## main system parameters
 @with_kw immutable HiaParameters @deftype Int32
@@ -18,10 +18,17 @@
     betafour::Float32 = 0.02   ## 10-60
     carriagereduction::Float32 = 0.5
     
-    invmeningitis::Float32 = 0.33
-    invpneumonia::Float32 = 0.29
-    invother::Float32 = 0.38
-    
+    ## if invasive, probability of going to meningitis (major, minor, non-disability meningititis , pneumonia, npnm)
+    ## data from the american arctic paper - might need some refinement - paper has data based on children/adult. 
+
+    #invmeningitis::Float32 = 0.33
+    ## when setting up the categorical distribution, meningitis major, minor, none must add up to 33%. The probabilities given below are scaled. In other words, for major meningitis disability its 9.5 out of a 100 people, which means 3.135 out of 33 people.  See Excel file for clarification.
+    prob_invas_men_major::Float32 = 0.03135 ### non-scaled 0.095 (7.1 - 15.2) interval 
+    prob_invas_men_minor::Float32 = 0.01881 ### non-scaled 0.057
+    prob_invas_men_nodis::Float32 = 0.27984 ### nonscaled 1 - (0.095 + 0.057) = 0.848
+    prob_invas_pneu::Float32 = 0.29
+    prob_invas_npnm::Float32 = 0.38
+
     latentshape::Float64 = 0.588
     latentscale::Float64 = 0.458
     latentmax = 4
@@ -41,15 +48,17 @@
 
     invasive_nohospital = 10 ## fixed 10 days .. duration of treatment. s
         
+    
+    ## how long they will stay in hospital if invasive AND not marked for death
     hospitalmin_nodeath = 8    ## if no death is marked for invasive, 
     hospitalmax_nodeath = 12   ##  length 8 - 12 days
 
-    
-    hospitalmin_death = 1      ## if marked for death, 
+    ## how long they will stay in hospital if invasive AND are marked for death
+    hospitalmin_death = 1      
     hospitalmax_death = 10     ## length of hospital stay = Poisson(4)
     hospitalmean_death = 4     ## with min/max 1/10 - chosen so that 25% of 
 
-
+    #death due to disease. 
     casefatalityratio::Float64 = 0.091 ## case fatality ratios
 
     ## path one
@@ -79,12 +88,10 @@
     boostertime    = 450  ## booster given at 15 months.      
 
     ## costs 
-    treatmentcost = 0
-    hospitalcost  = 0
-    disability_minorcost = 0 
-    disability_majorcost = 0
-    productivitycost = 0
-    meningitiscost = 0
+    basictreatmentcost = 0  
+    basichospitalcost  = 0
+    meningitismajorcost = 0
+    meningitisminorcost = 0
     pneumoniacost = 0
     npnmcost = 0
 

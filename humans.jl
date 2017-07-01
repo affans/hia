@@ -138,7 +138,7 @@ function tpp(x::Human, P::HiaParameters)
             :CAR  => x.swap = REC
             :SYMP => x.swap = REC
             :INV  => 
-                    begin ## person is coming out of invasive
+                    begin ## person is coming OUT of invasive
                         x.invtype = NOINV  ## if the swap is dead, this gets reset anyways. 
                         ## if invdeath was on.. they will die..     
                         x.swap = x.invdeath == true ? DEAD : REC    
@@ -244,11 +244,10 @@ function swap(h::Human, P::HiaParameters)
         h.invdeath = rand() < P.casefatalityratio ? true : false
         if h.invdeath == false 
             ## not dying, check what kind of invasive they will be. 
-            bin = rand(Categorical([P.invmeningitis, P.invpneumonia, P.invother]))
-            ## bin = 1, 2, 3 
-            h.invtype = INVTYPE(bin)
+            d = Categorical([P.prob_invas_men_nodis, P.prob_invas_men_major, P.prob_invas_men_minor, P.prob_invas_pneu, P.prob_invas_npnm])
+            h.invtype = INVTYPE(rand(d))  ## make sure the ENUM integer values and the CATEGORICAL order sequence matches. ie, INVTYPE(1) matches to MEN NODIS
         end 
-    end  ## no need for an else... person can never become invasive again (or shouldnt)
+    end  
 
     # common variables for all compartments    
     oldhealth = h.health ## need to pass into pathtaken()

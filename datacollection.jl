@@ -37,7 +37,7 @@ function collect(x, DC::DataCollection, time)
     elseif x.swap == INV
         inv[time, x.agegroup_beta] += 1
         ## check for invasive specific-disease. 
-        if x.invtype == MEN
+        if x.invtype == MENNOD || x.invtype == MENMAJ || x.invtype == MENMIN
             invM[time, x.agegroup_beta] += 1
         elseif x.invtype == PNM
             invP[time, x.agegroup_beta] += 1

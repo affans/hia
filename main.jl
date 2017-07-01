@@ -2,7 +2,7 @@ using Parameters
 using Match
 using Distributions
 using StatsBase
-using ParallelDataTransfer
+#using ParallelDataTransfer
 using DataArrays, DataFrames
 using ProgressMeter
 using PmapProgressMeter
