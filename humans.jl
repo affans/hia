@@ -2,6 +2,7 @@
 
 type Human 
     ## disease parameters (modified in make() function)
+    id::Int32          ## ID of the human
     health::HEALTH     ## current health status
     swap::HEALTH       ## swap health status (works as "last status" also - see swap())
     path::Int8         ## the path they will take if they get sick
@@ -11,6 +12,8 @@ type Human
     latcnt::Int32      ## how many times this person has become latent
     symcnt::Int32      ## how many times this person has become symptomatic
     invcnt::Int32      ## how many times this person has become invasive
+    deadcnt::Int32     ## how many times this person has died. This variable shouldnt reset. 
+    sickfrom::Int32    ## if person is infected, record the ID of the person who infects
     timeinstate::Int32 ## days spent in current health status   
     statetime::Int32   ## maximum amount of days spent in health status 
     ## contact structure and demographics
@@ -18,15 +21,14 @@ type Human
     agegroup_beta::Int32         ## - NOT the jackson contact matrix group.
     gender::GENDER     ## gender - 50% male/female
     meetcnt::Int32     ## total meet count. how many times this person has met someone else.    
-    dailycontact::Int32## not needed ?? ## who this person meets on a daily basis. 
-    ## vaccine
     pvaccine::Bool     ## if primary vaccine is turned on
     bvaccine::Bool     ## if booster vaccine is turned on
     dosesgiven::Int8   ## doses given, 1 2 3 after primary
     
     # constructor:: empty human - set defaults here
     ##  if changing, makesure to add/remove from reset() function
-    Human( health = SUSC, 
+    Human( id = 0,
+           health = SUSC, 
            swap   = UNDEF, 
            path   = 0, 
            invtype = NOINV, 
@@ -34,17 +36,18 @@ type Human
            plvl   = 0,
            latcnt = 0,
            symcnt = 0,
-           invcnt = 0,
+           invcnt = 0, deadcnt = 0, sickfrom = 0,
            timeinstate = 0, statetime = typemax(Int32), 
            age = 0, agegroup_beta = 0, gender = MALE,
-           meetcnt = 0, dailycontact = 0,
+           meetcnt = 0, 
            pvaccine = false, bvaccine = false, 
-           dosesgiven = 0) = new(health, swap, path, invtype, invdeath, plvl, latcnt, symcnt, invcnt, timeinstate, statetime, age, agegroup_beta, gender, meetcnt, dailycontact, pvaccine, bvaccine, dosesgiven) 
+           dosesgiven = 0) = new(id, health, swap, path, invtype, invdeath, plvl, latcnt, symcnt, invcnt, deadcnt, sickfrom, timeinstate, statetime, age, agegroup_beta, gender, meetcnt, pvaccine, bvaccine, dosesgiven) 
 end
 
 function initialize(h::Array{Human},P::HiaParameters)
     for i = 1:P.gridsize
         h[i] = Human()
+        h[i].id = i
     end
 end
 
@@ -75,13 +78,13 @@ function newborn(h::Human)
     h.latcnt = 0
     h.symcnt = 0
     h.invcnt = 0
+    h.sickfrom = 0
     h.timeinstate = 0
     h.statetime = typemax(Int32) 
     h.age = 0
     h.agegroup_beta = beta_agegroup(0)
     h.gender = rand() < 0.5 ? FEMALE : MALE
     h.meetcnt = 0
-    h.dailycontact = 0   ## deprecated, no one cares. 
     h.pvaccine = false 
     h.bvaccine = false 
     h.dosesgiven = 0
@@ -93,7 +96,7 @@ function app(h::Human, P::HiaParameters)
     h.age += 1   ## increase age by one
     tage = h.age ## store as temp
     
-    # check at a yearly level
+    # check at a yearly level for death, new protection level, and recalculate agegroup_beta
     if mod(tage, 365) == 0
         # 5 year mark, if susceptible, booster protection will expire and person will go to 0.5 protection level
         if tage == 1825  
@@ -106,6 +109,7 @@ function app(h::Human, P::HiaParameters)
         ageyears = Int(tage/365)
         if rand() < distribution_ageofdeath(ageyears, h.gender)
             h.swap = DEAD  ##swap to natural death
+            h.deadcnt += 1
             ##newborn(h) 
         end
     end         
@@ -216,8 +220,9 @@ function transmission(susc::Human, sick::Human, P::HiaParameters)
 
     ## if they are carriage or presymptomatic - apply a reduction (value set in parameters)
     trans = (sick.health == CAR) ? beta*P.carriagereduction*(1 - susc.plvl) : beta*(1 - susc.plvl)
-    if rand() < trans        
+    if rand() < trans   ## succesfull transfer of pathogen.      
         susc.swap = LAT
+        susc.sickfrom = sick.id
     end
 end
 
@@ -247,7 +252,11 @@ function swap(h::Human, P::HiaParameters)
             d = Categorical([P.prob_invas_men_nodis, P.prob_invas_men_major, P.prob_invas_men_minor, P.prob_invas_pneu, P.prob_invas_npnm])
             h.invtype = INVTYPE(rand(d))  ## make sure the ENUM integer values and the CATEGORICAL order sequence matches. ie, INVTYPE(1) matches to MEN NODIS
         end 
-    end  
+    end 
+
+    if h.swap == REC
+        h.sickfrom = 0
+    end 
 
     # common variables for all compartments    
     oldhealth = h.health ## need to pass into pathtaken()
@@ -271,13 +280,16 @@ function swap(h::Human, P::HiaParameters)
     return nothing
 end
 
-function update(x::Human, P::HiaParameters, DC::DataCollection, time)
+function update(x::Human, P::HiaParameters, DC::DataCollection, time, humans::Array{Human})
     if x.swap != UNDEF
         ## run swap function
         swap(x, P)
 
-        ## run data collection
-        collect(x, DC, time)
+        ## run daily data collection
+        collectdaily(x, DC, time)
+
+        ## run waifu
+        waifumatrix(x, DC, humans)
 
         ## if the swap is dead.. replace them. 
         if x.swap == DEAD

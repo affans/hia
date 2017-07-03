@@ -18,6 +18,8 @@ function todo()
     warn("Hia model => clean up bins variables in main()")  
     warn("Hia model => √ disease specific hospitalization length of stay")  
     warn("Hia model => in groupcounts - processed multiple times in processresults()")  
+    warn("Hia model => if infected, see if sickfrom ID is valid. ")  
+    
     
     
     

@@ -17,13 +17,8 @@ include("humans.jl")
 include("vaccine.jl")
 include("functions.jl")
 
-function seed(simulationnumber::Int64, P::HiaParameters, cb)        
-    ## simulationnumber is not needed for now. 
-    ## savejld -- should we save the humans/DC data after the simulations have ended?
-    ## loadjld -- should we load old humans/DC data     
-    
+function seed(simulationnumber::Int64, P::HiaParameters, M::ModelParameters, cb)         
     #wait(remotecall(info, 1, "simulation: $simulationnumber"))
-    
     
     ## TODO: Print message, what are we doing?
     humans = Array{Human}(P.gridsize);    
@@ -56,18 +51,21 @@ function seed(simulationnumber::Int64, P::HiaParameters, cb)
             dailycontact(humans[i], P, ag1, ag2, ag3, ag4, n, f, s, t)
             tpp(humans[i], P)
             app(humans[i], P)
-            update(humans[i], P, DC, time)          
+            update(humans[i], P, DC, time, humans)          
         end
         cb(1)            
     end
-    hf = string("./serial/hser", simulationnumber, ".jld")
-    save(hf, "humans", humans, "DC", DC)
+    if M.savejld
+        hf = string(M.write_serialdatalocation, "seeddat", simulationnumber, ".jld")
+        save(hf, "humans", humans, "DC", DC)    ## saving HDF file, as a "Dictionary". Two keys: "humans" and "DC"
+    end
     return humans, DC
 end
 
 
-function pastthirty(simulationnumber, vaccineon, P::HiaParameters, cb)
-    fn = string("./serial/hser", simulationnumber, ".jld")
+function pastthirty(simulationnumber, P::HiaParameters, M::ModelParameters, cb)
+   
+    fn = string(M.read_serialdatalocation, "seeddat", simulationnumber, ".jld")    
     humans = load(fn)["humans"]     ## this gives a Array{Human} 
 
     DC = DataCollection(P.vaccinetime)     ## setup a new data collection instance for vaccine
@@ -89,24 +87,28 @@ function pastthirty(simulationnumber, vaccineon, P::HiaParameters, cb)
             dailycontact(humans[i], P, ag1, ag2, ag3, ag4, n, f, s, t)
             tpp(humans[i], P)
             app(humans[i], P)
-            if vaccineon
+            if M.vaccineon
                 vcc(humans[i], P)    ## add vaccine specific code. 
             end
-            update(humans[i], P, DC, time)          
+            update(humans[i], P, DC, time, humans)          
         end
         cb(1)    
     end
 
-    if vaccineon
-        hf = string("./serial/vhser", simulationnumber, ".jld")
-    else 
-        hf = string("./serial/nvser", simulationnumber, ".jld")
+    if M.savejld
+        if M.vaccineon            
+            hf = string(M.write_serialdatalocation, "vaccinedat", simulationnumber, ".jld")
+        else 
+            hf = string(M.write_serialdatalocation, "novaccinedat", simulationnumber, ".jld")
+        end
+        save(hf, "humans", humans, "DC", DC)
     end
-    save(hf, "humans", humans, "DC", DC)
+    
     return humans, DC
 end
 
     
+
 #  P = HiaParameters(simtime = 100, gridsize = 100000, betaone = 1, betatwo = 1, betathree = 1, betafour = 1)
   #humans = Array{Human}(P.gridsize);
   #initialize(humans, P)

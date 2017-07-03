@@ -4,6 +4,17 @@
 @enum INVTYPE NOINV=0 MENNOD=1 MENMAJ=2 MENMIN=3 PNM=4 NPNM=5
 
 ## main system parameters
+@with_kw type ModelParameters 
+    numofsims::Int32 = 50
+    #numofprocessors::Int32 = 50
+    verbose::Bool = false
+    savejld::Bool = true
+    read_serialdatalocation::String = "./serial/"    #serialfolder in the form of "{dir}/"
+    write_serialdatalocation::String = "./serial/"   #serialfolder in the form of "{dir}/"
+    vaccineon::Bool = true
+end
+
+## simulation parameters
 @with_kw immutable HiaParameters @deftype Int32
     # general parameters
     simtime = 365         ## time of simulation 40 years in days
@@ -12,10 +23,10 @@
     vaccinetime = 0       ## years (in days) added on top of simtime
     
     ## four betas, corresponding to CDC (U shaped incidence data) age groups. 
-    betaone::Float32 = 0.05    ## 0-2
-    betatwo::Float32 = 0.04    ##  2-5
-    betathree::Float32 = 0.03  ## 5-10, 60+
-    betafour::Float32 = 0.02   ## 10-60
+    betaone::Float32 = 0.0722    ## 0-2
+    betatwo::Float32 = 0.0526    ##  2-5
+    betathree::Float32 = 0.0426  ## 5-10, 60+
+    betafour::Float32 = 0.0699   ## 10-60
     carriagereduction::Float32 = 0.5
     
     ## if invasive, probability of going to meningitis (major, minor, non-disability meningititis , pneumonia, npnm)
@@ -96,3 +107,4 @@
     npnmcost = 0
 
 end
+
