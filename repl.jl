@@ -23,7 +23,7 @@ info("starting lumberjack process, starting repl")
 info("adding procs...")
 info("starting @everywhere include process...")
 
-addprocs(4)
+addprocs(50)
 @everywhere include("main.jl")
 
 function fullrun()
@@ -31,8 +31,8 @@ function fullrun()
   info("starting full run: seed + pastthirty with/without vaccine")
   info("total number of processors setup: $(nprocs())")
   info("setting up Hia and Model parameters...")
-  @everywhere P = HiaParameters(simtime = 1*365, vaccinetime = 1*365)
-  @everywhere M = ModelParameters(numofsims = 8)
+  @everywhere P = HiaParameters(simtime = 30*365, vaccinetime = 10*365)
+  @everywhere M = ModelParameters(numofsims = 50)
   info("\n $P"); info("\n $M");
   
   info("starting seed pmap...")
@@ -53,7 +53,7 @@ function fullrun()
     info("writing files...")
     for i=1:length(resultsseed)
       hf = string(M.writeloc, "seed$i.jld")    
-      save(hf, "humans", resultsseed[i][1], "DC", resultsseed[i][2])    
+      save(hf, "humans", resultsseed[i][1], "DC", resultsseed[i][2], "costs", resultsseed[i][3])    
     end    
   else 
     info("this is a full run, save jld must be on")
@@ -69,6 +69,7 @@ function fullrun()
   
   @everywhere M.initializenew = false
   info("M.initialize variable set to $(M.initializenew)")
+  
   info("starting pastthirty pmap with M.vaccineon status: $(M.vaccineon)...")  
   @everywhere P.simtime = P.vaccinetime
   resultsone = pmap((cb, x) -> sim(x, P, M, cb), Progress(M.numofsims*P.simtime), 1:(M.numofsims), passcallback=true)  
@@ -78,10 +79,18 @@ function fullrun()
   info("starting pastthirty pmap with vaccineon status: $(M.vaccineon)...")
   resultstwo = pmap((cb, x) -> sim(x, P, M, cb), Progress(M.numofsims*P.simtime), 1:(M.numofsims), passcallback=true)    
   info("... finished")     
+
+  info("writing results one and two files...")
+  for i=1:length(resultsone)
+    rs1 = string(M.writeloc, "one$i.jld")    
+    rs2 = string(M.writeloc, "two$i.jld")        
+    save(rs1, "humans", resultsone[i][1], "DC", resultsone[i][2], "costs", resultsone[i][3])    
+    save(rs2, "humans", resultstwo[i][1], "DC", resultstwo[i][2], "costs", resultstwo[i][3])        
+  end   
   info("all simulation scenarios finished!")
   return resultsseed, resultsone, resultstwo
 end
-
+fullrun()
 # P = HiaParameters(simtime = 30*365, vaccinetime = 10*365, betaone = 0.5, betatwo = 0.5, betathree=0.5, betafour = 0.5)
 #main(50)
 #process(500, "./serial/hser")

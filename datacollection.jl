@@ -12,20 +12,23 @@ type DataCollection  ## data collection type.
     invP::Array{Int64}      # invasive, pneumonia
     invN::Array{Int64}      # invasive, NPNM
     waifu::Array{Int64}
+    system::Array{Int64}
 
 
-    ## size x 5 matrix.. 5 because we have five "beta" agegroups. 
-    DataCollection(size::Integer) = new(zeros(Int64, size, 5), #lat 
-                                    zeros(Int64, size, 5),     #car
-                                    zeros(Int64, size, 5),     #sym
-                                    zeros(Int64, size, 5),     #inv
-                                    zeros(Int64, size, 5),     #rec
-                                    zeros(Int64, size, 5),     #deadn
-                                    zeros(Int64, size, 5),     #deadi
-                                    zeros(Int64, size, 5),     #invM
-                                    zeros(Int64, size, 5),     #invP
-                                    zeros(Int64, size, 5),     #invN
-                                    zeros(Int64, 5, 5))      ## waifu, 5x5 matrix (5 agegroups)   
+    ## size x 5 matrix.. 5 because we have five "beta" agegroups, and size = simulation time
+    DataCollection(size::Integer) = new(zeros(Int64, size, 5),    #lat 
+                                    zeros(Int64, size, 5),        #car
+                                    zeros(Int64, size, 5),        #sym
+                                    zeros(Int64, size, 5),        #inv
+                                    zeros(Int64, size, 5),        #rec
+                                    zeros(Int64, size, 5),        #deadn
+                                    zeros(Int64, size, 5),        #deadi
+                                    zeros(Int64, size, 5),        #invM
+                                    zeros(Int64, size, 5),        #invP
+                                    zeros(Int64, size, 5),        #invN
+                                    zeros(Int64, 5, 5),           ## waifu, 5x5 matrix (5 agegroups)   
+                                    zeros(Int64, 100000, size))   ## overview matrix
+
 end
 
 function waifumatrix(x, DC::DataCollection, h::Array)

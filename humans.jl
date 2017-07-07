@@ -38,7 +38,7 @@ type Human{T <: Integer}
            carcnt = 0,
            symcnt = 0,
            invcnt = 0, deadcnt = 0, sickfrom = 0,
-           timeinstate = 0, statetime = typemax(Int32), 
+           timeinstate = 0, statetime = typemax(Int64), 
            age = 0, agegroup_beta = 0, gender = MALE,
            meetcnt = 0, 
            pvaccine = false, bvaccine = false, 
@@ -82,7 +82,7 @@ function newborn(h::Human)
     h.invcnt = 0
     h.sickfrom = 0
     h.timeinstate = 0
-    h.statetime = typemax(Int32) 
+    h.statetime = typemax(Int64) 
     h.age = 0
     h.agegroup_beta = beta_agegroup(0)
     h.gender = rand() < 0.5 ? FEMALE : MALE
@@ -266,7 +266,7 @@ function swap(h::Human, P::HiaParameters)
     end 
 
     if h.swap == REC
-        h.sickfrom = 0
+        h.sickfrom = 0  ## reset this variable. not terribly important, because if they get sick, it will rewrite. 
     end 
 
     # common variables for all compartments    
@@ -293,13 +293,16 @@ function swap(h::Human, P::HiaParameters)
     return nothing
 end
 
-function update(x::Human, P::HiaParameters, DC::DataCollection, time, humans::Array{Human{Int64}})
+function update(x::Human, P::HiaParameters, DC::DataCollection, C::CostCollection, time, humans::Array{Human{Int64}})
     if x.swap != UNDEF
-        ## run swap function
+        ## run swap function, this dosn't reset the swap - do it manually. 
         swap(x, P)
 
         ## run daily data collection
         collectdaily(x, DC, time)
+
+        ## run daily cost function
+        dailycosts(x, P, C)
 
         ## run waifu
         #waifumatrix(x, DC, humans)

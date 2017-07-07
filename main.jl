@@ -16,6 +16,7 @@ include("distributions.jl")
 include("humans.jl")
 include("vaccine.jl")
 include("functions.jl")
+include("costs.jl")
 
 
 function setuphumans(simid::Int64, P::HiaParameters, M::ModelParameters)
@@ -37,6 +38,7 @@ end
 function sim(simid::Int64, P::HiaParameters, M::ModelParameters, cb)
     humans = setuphumans(simid, P, M) ## get the humans
     DC = DataCollection(P.simtime) #set P.vaccinetime = 0 to run without vaccine. 
+    C = CostCollection(P.gridsize, 8)  ## 8 because we have eight health states
     vaccineon = M.vaccineon
     ## get the distributions for contact strcuture to pass to dailycontact()
     #println("getting distributions")
@@ -61,11 +63,12 @@ function sim(simid::Int64, P::HiaParameters, M::ModelParameters, cb)
             if vaccineon
                 vcc(humans[i], P)    ## add vaccine specific code. 
             end
-            update(humans[i], P, DC, time, humans)          
+            update(humans[i], P, DC, C, time, humans)          
+            DC.system[i, time] = Int(humans[i].health)
         end
         cb(1)            
     end
-    return humans, DC
+    return humans, DC, C
 end
 
 

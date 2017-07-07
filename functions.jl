@@ -158,13 +158,13 @@ end
 
 
 
-function statetime(x::Human, P::HiaParameters)::Int32
+function statetime(x::Human, P::HiaParameters)
     ## this returns the statetime for everystate..
     ## it uses their CURRENT HEALTH.. so if using for swap purposes, SWAP FIRST then get statetime. 
    
     st = 0 ## return variable
     @match Symbol(x.health) begin
-        :SUSC  => st = typemax(Int32)  ## no expiry for suscepitble
+        :SUSC  => st = typemax(Int64)  ## no expiry for suscepitble
         :LAT   => 
                 begin
                     #d = LogNormal(P.latentshape, P.latentscale)
@@ -182,7 +182,7 @@ function statetime(x::Human, P::HiaParameters)::Int32
                     end
                 end       
         :REC   => st = rand(P.recoveredmin:P.recoveredmax)
-        :DEAD  => st = typemax(Int32)        
+        :DEAD  => st = typemax(Int64)        
         _   => throw("Hia model => statetime passed in non-health enum")
     end
     return st

@@ -1,5 +1,7 @@
 ## main system enums
-@enum HEALTH SUSC LAT CAR SYMP INV REC DEAD UNDEF
+
+## if changing HEALTH ENUM, remember to change the costcollection construction in main()...
+@enum HEALTH SUSC=1 LAT=2 CAR=3 SYMP=4 INV=5 REC=6 DEAD=7 UNDEF=8
 @enum GENDER MALE=1 FEMALE=2
 @enum INVSEQ COGMAJ=1 SEIZMAJ=2 HEARLOSSMAJ=3 MOTORMAJ=4 VISUALMAJ=5 IMPAIRMAJ=6 MIMPAIRMAJ=7 COGMIN=8 SEIZMIN=9 HEARLOSSMIN=10 MOTORMIN=11 VISUALMIN=12 IMPAIRMIN=13 MIMPAIRMIN=14 NOSEQ=15 PNEU=16 NPNM=17
 ## NOTE: Enum integer values set up this way because the categorical distribution distribution_sequlae(). Ie, if invasive is meningitis, pick a random number from this categorical distribution yeilds a number from 1 - 15 .. which I then call INVSEQ(integer_value) to convert to the Enum.. if the invasive is pneu, npnm then we just set it manually. 
@@ -8,8 +10,8 @@
 ## main system parameters
 @with_kw type ModelParameters 
     initializenew::Bool = true      ## are we initializing a new population or reading old JLD serialized data.
-    numofsims::Int32 = 50           ## how much sims to run
-    numofprocessors::Int32 = 50     ## number of processors to use    
+    numofsims::Int64 = 50           ## how much sims to run
+    numofprocessors::Int64 = 50     ## number of processors to use    
     savejld::Bool = true            ## whether we should save files at the end of simulation. 
     readloc::String  = "./serial/"    #serialfolder in the form of "{dir}/"
     writeloc::String = "./serial/"   #serialfolder in the form of "{dir}/"
@@ -17,7 +19,7 @@
 end
 
 ## simulation parameters
-@with_kw type HiaParameters @deftype Int32
+@with_kw type HiaParameters @deftype Int64
     # general parameters
     simtime = 365         ## time of simulation 40 years in days
     gridsize = 100000     ## size of population 
@@ -75,7 +77,6 @@ end
 
     invasive_nohospital = 10 ## fixed 10 days .. duration of treatment. s
         
-    
     ## how long they will stay in hospital if invasive AND not marked for death
     hospitalmin_nodeath = 8    ## if no death is marked for invasive, 
     hospitalmax_nodeath = 12   ##  length 8 - 12 days
@@ -115,11 +116,21 @@ end
     boostertime    = 450  ## booster given at 15 months.      
 
     ## costs 
-    basictreatmentcost = 0  
-    meningitismajorcost = 0
-    meningitisminorcost = 0
-    pneumoniacost = 0
-    npnmcost = 0
+    ##  -- these are per night 
+    cost_physicianvisit     = 60
+    cost_antibiotics        = 60
+    cost_medivac            = 0
+    cost_seq_institute_care = 0
+    cost_seq_special_school = 0
+    cost_seq_general_house  = 0
+    cost_seq_minor_dis      = 0
+end
 
+
+## cost collection type structure
+type CostCollection
+    costmatrix::Matrix{Int64}  ## number of people x categories
+    CostCollection(size::Int64) = new(zeros(Int64, size, size))
+    CostCollection(rows::Int64, cols::Int64) = new(zeros(Int64, rows, cols))    
 end
 
