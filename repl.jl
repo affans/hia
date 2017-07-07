@@ -1,3 +1,12 @@
+using Parameters
+using Match
+using Distributions
+using StatsBase
+using ParallelDataTransfer
+using DataArrays, DataFrames
+using ProgressMeter
+using PmapProgressMeter
+using JLD
 
 # if abm
 
@@ -10,61 +19,68 @@ using Lumberjack
 add_truck(LumberjackTruck("processrun.log"), "my-file-logger")
 remove_truck("console")
 
-addprocs(50)
+info("starting lumberjack process, starting repl")
+info("adding procs...")
+info("starting @everywhere include process...")
+
+addprocs(4)
 @everywhere include("main.jl")
 
-
-function readjld(prefix)
-  info("starting reading of hdf5/jld files using pmap")
-  a = pmap(1:numofsims) do x
-    filename = string(prefix, x, ".jld")
-    return load(filename)["DC"]  
-  end
-  info("pmap finished, returning function. ")
-  return a;
-end
-
 function fullrun()
+  info(now())
   info("starting full run: seed + pastthirty with/without vaccine")
   info("total number of processors setup: $(nprocs())")
   info("setting up Hia and Model parameters...")
-  @everywhere P = HiaParameters(simtime = 30*365, vaccinetime = 10*365)
-  @everywhere M = ModelParameters(numofsims = 500)
-  info("\n $P"); info("\n $M"); info("\n")
-  if M.savejld 
-    info("savejld is turned on, save folder set to $(M.write_serialdatalocation)")
-    if !isdir(M.write_serialdatalocation) 
-        info("save folder not found, attemping to make directory")
-        mkdir(M.write_serialdatalocation)
-    end
-  end
+  @everywhere P = HiaParameters(simtime = 1*365, vaccinetime = 1*365)
+  @everywhere M = ModelParameters(numofsims = 8)
+  info("\n $P"); info("\n $M");
+  
   info("starting seed pmap...")
-  resultsseed = pmap((cb, x) -> seed(x, P, M, cb), Progress(M.numofsims*P.simtime), 1:(M.numofsims), passcallback=true)   
+  resultsseed = pmap((cb, x) -> sim(x, P, M, cb), Progress(M.numofsims*P.simtime), 1:(M.numofsims), passcallback=true)   
   info("seed finished!")
 
-  info("starting pastthirty simulations")
+  if M.savejld 
+    info("M.savejld is true, checking if $(M.writeloc) exists")
+    if !isdir(M.writeloc) 
+        info("...not found: attemping to make directory $(M.writeloc)")
+        try
+          mkdir(M.writeloc)
+        catch
+          info("count not create jld save directory")
+          error("could not create jld save directory")
+        end
+    end
+    info("writing files...")
+    for i=1:length(resultsseed)
+      hf = string(M.writeloc, "seed$i.jld")    
+      save(hf, "humans", resultsseed[i][1], "DC", resultsseed[i][2])    
+    end    
+  else 
+    info("this is a full run, save jld must be on")
+    error("savejld not on")
+  end
+  info("starting past seed simulations")
   if P.vaccinetime == 0 
     info("vaccine time is set to zero... exiting")
     throw("P.vaccinetime is zero.")
   end  
   info("extra runtime is set to $(P.vaccinetime)")
-  info("jld read folder set to $(M.read_serialdatalocation)")  # "/stor4/share/affan/serial_july1/"
-    
-  info("starting pastthirty pmap with M.vaccineon status: $(M.vaccineon)...")
-  resultsone = pmap((cb, x) -> pastthirty(x, P, M, cb), Progress(M.numofsims*P.vaccinetime), 1:(M.numofsims), passcallback=true) 
-  info("extrathirty finished")     
+  info("jld read folder set to $(M.readloc)")  
+  
+  @everywhere M.initializenew = false
+  info("M.initialize variable set to $(M.initializenew)")
+  info("starting pastthirty pmap with M.vaccineon status: $(M.vaccineon)...")  
+  @everywhere P.simtime = P.vaccinetime
+  resultsone = pmap((cb, x) -> sim(x, P, M, cb), Progress(M.numofsims*P.simtime), 1:(M.numofsims), passcallback=true)  
+  info("... finished")     
   info("flipping M.vaccine status for rerun")
-  M.vaccineon = !M.vaccineon
+  @everywhere M.vaccineon = !M.vaccineon
   info("starting pastthirty pmap with vaccineon status: $(M.vaccineon)...")
-  resultstwo = pmap((cb, x) -> pastthirty(x, P, M, cb), Progress(M.numofsims*P.vaccinetime), 1:(M.numofsims), passcallback=true)    
-  info("extrathirty finished")     
+  resultstwo = pmap((cb, x) -> sim(x, P, M, cb), Progress(M.numofsims*P.simtime), 1:(M.numofsims), passcallback=true)    
+  info("... finished")     
   info("all simulation scenarios finished!")
-
   return resultsseed, resultsone, resultstwo
-
 end
-
-fullrun()
 
 # P = HiaParameters(simtime = 30*365, vaccinetime = 10*365, betaone = 0.5, betatwo = 0.5, betathree=0.5, betafour = 0.5)
 #main(50)

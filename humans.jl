@@ -1,29 +1,29 @@
 # sets up the humans
-
-type Human 
+type Human{T <: Integer}
     ## disease parameters (modified in make() function)
-    id::Int32          ## ID of the human
+    id::T                 ## ID of the human
     health::HEALTH     ## current health status
     swap::HEALTH       ## swap health status (works as "last status" also - see swap())
-    path::Int8         ## the path they will take if they get sick
-    invtype::INVTYPE   ## if they become invasive, what kind of invasive disease?
+    path::T                ## the path they will take if they get sick
+    invtype::INVSEQ    ## invasive sequlae
     invdeath::Bool     ## whether this human is invasive and will die
     plvl::Float32      ## protection level - 0 - 100% 
-    latcnt::Int32      ## how many times this person has become latent
-    symcnt::Int32      ## how many times this person has become symptomatic
-    invcnt::Int32      ## how many times this person has become invasive
-    deadcnt::Int32     ## how many times this person has died. This variable shouldnt reset. 
-    sickfrom::Int32    ## if person is infected, record the ID of the person who infects
-    timeinstate::Int32 ## days spent in current health status   
-    statetime::Int32   ## maximum amount of days spent in health status 
+    latcnt::T            ## how many times this person has become latent
+    carcnt::T           ## how many times this person has become carriage
+    symcnt::T            ## how many times this person has become symptomatic
+    invcnt::T            ## how many times this person has become invasive
+    deadcnt::T          ## how many times this person has died. This variable shouldnt reset. 
+    sickfrom::T       ## if person is infected, record the ID of the person who infects
+    timeinstate::T ## days spent in current health status   
+    statetime::T   ## maximum amount of days spent in health status 
     ## contact structure and demographics
-    age::Int32         ## age in days  - 365 days per year
-    agegroup_beta::Int32         ## - NOT the jackson contact matrix group.
+    age::T         ## age in days  - 365 days per year
+    agegroup_beta::T         ## - NOT the jackson contact matrix group.
     gender::GENDER     ## gender - 50% male/female
-    meetcnt::Int32     ## total meet count. how many times this person has met someone else.    
+    meetcnt::T     ## total meet count. how many times this person has met someone else.    
     pvaccine::Bool     ## if primary vaccine is turned on
     bvaccine::Bool     ## if booster vaccine is turned on
-    dosesgiven::Int8   ## doses given, 1 2 3 after primary
+    dosesgiven::T   ## doses given, 1 2 3 after primary
     
     # constructor:: empty human - set defaults here
     ##  if changing, makesure to add/remove from reset() function
@@ -31,27 +31,28 @@ type Human
            health = SUSC, 
            swap   = UNDEF, 
            path   = 0, 
-           invtype = NOINV, 
+           invtype = NOSEQ, 
            invdeath = false,
            plvl   = 0,
            latcnt = 0,
+           carcnt = 0,
            symcnt = 0,
            invcnt = 0, deadcnt = 0, sickfrom = 0,
            timeinstate = 0, statetime = typemax(Int32), 
            age = 0, agegroup_beta = 0, gender = MALE,
            meetcnt = 0, 
            pvaccine = false, bvaccine = false, 
-           dosesgiven = 0) = new(id, health, swap, path, invtype, invdeath, plvl, latcnt, symcnt, invcnt, deadcnt, sickfrom, timeinstate, statetime, age, agegroup_beta, gender, meetcnt, pvaccine, bvaccine, dosesgiven) 
+           dosesgiven = 0) = new(id, health, swap, path, invtype, invdeath, plvl, latcnt, carcnt, symcnt, invcnt, deadcnt, sickfrom, timeinstate, statetime, age, agegroup_beta, gender, meetcnt, pvaccine, bvaccine, dosesgiven) 
 end
 
-function initialize(h::Array{Human},P::HiaParameters)
+function initialize(h::Array{Human{Int64}},P::HiaParameters)
     for i = 1:P.gridsize
-        h[i] = Human()
+        h[i] = Human{Int64}()
         h[i].id = i
     end
 end
 
-function demographics(h::Array{Human}, P::HiaParameters)
+function demographics(h::Array{Human{Int64}}, P::HiaParameters)
     age_cdf = distribution_age()
     for x in h
         rn = rand()
@@ -72,10 +73,11 @@ function newborn(h::Human)
     h.health = SUSC
     h.swap   = UNDEF
     h.path   = 0   
-    h.invtype = NOINV
+    h.invtype = NOSEQ
     h.invdeath = false
     h.plvl   = 0 #protection(h)
     h.latcnt = 0
+    h.carcnt = 0
     h.symcnt = 0
     h.invcnt = 0
     h.sickfrom = 0
@@ -143,7 +145,7 @@ function tpp(x::Human, P::HiaParameters)
             :SYMP => x.swap = REC
             :INV  => 
                     begin ## person is coming OUT of invasive
-                        x.invtype = NOINV  ## if the swap is dead, this gets reset anyways. 
+                        x.invtype = NOSEQ  ## if the swap is dead, this gets reset anyways. 
                         ## if invdeath was on.. they will die..     
                         x.swap = x.invdeath == true ? DEAD : REC    
                     end
@@ -249,8 +251,17 @@ function swap(h::Human, P::HiaParameters)
         h.invdeath = rand() < P.casefatalityratio ? true : false
         if h.invdeath == false 
             ## not dying, check what kind of invasive they will be. 
-            d = Categorical([P.prob_invas_men_nodis, P.prob_invas_men_major, P.prob_invas_men_minor, P.prob_invas_pneu, P.prob_invas_npnm])
-            h.invtype = INVTYPE(rand(d))  ## make sure the ENUM integer values and the CATEGORICAL order sequence matches. ie, INVTYPE(1) matches to MEN NODIS
+            id = rand(Categorical([P.prob_invas_men, P.prob_invas_pneu, P.prob_invas_npnm]))
+            if id == 1
+                td = distribution_sequlae(P)            
+                h.invtype = INVSEQ(rand(td))  
+                ## make sure the ENUM integer values and the CATEGORICAL order sequence matches.
+                ## enum value 16/17 correspond to pneu/npnm but they will never be returned from a 15 element categorical array                
+            elseif id == 2
+                h.invtype = PNEU
+            elseif id == 3                
+                h.invtype = NPNM
+            end
         end 
     end 
 
@@ -269,9 +280,11 @@ function swap(h::Human, P::HiaParameters)
     ## slight inconvenient "feature": when transferring from REC -> SUS (ie, health = SUS, oldhealth = REC), the pathtaken is "4".. however, the person's path isnt actually determined until he moves to latent
     h.plvl = protection(h) ## this will get a new protection level, based on the new health we just set above
 
-    ## update individual counters.
+    ## update individual counters based on the new health
     if h.health == LAT   
         h.latcnt += 1
+    elseif h.health == CAR
+        h.carcnt += 1
     elseif h.health == SYMP
         h.symcnt += 1
     elseif h.health == INV
@@ -280,7 +293,7 @@ function swap(h::Human, P::HiaParameters)
     return nothing
 end
 
-function update(x::Human, P::HiaParameters, DC::DataCollection, time, humans::Array{Human})
+function update(x::Human, P::HiaParameters, DC::DataCollection, time, humans::Array{Human{Int64}})
     if x.swap != UNDEF
         ## run swap function
         swap(x, P)
@@ -289,7 +302,7 @@ function update(x::Human, P::HiaParameters, DC::DataCollection, time, humans::Ar
         collectdaily(x, DC, time)
 
         ## run waifu
-        waifumatrix(x, DC, humans)
+        #waifumatrix(x, DC, humans)
 
         ## if the swap is dead.. replace them. 
         if x.swap == DEAD

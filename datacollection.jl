@@ -54,14 +54,6 @@ function collectdaily(x, DC::DataCollection, time)
         sym[time, x.agegroup_beta] += 1
     elseif x.swap == INV
         inv[time, x.agegroup_beta] += 1
-        ## check for invasive specific-disease. 
-        if x.invtype == MENNOD || x.invtype == MENMAJ || x.invtype == MENMIN
-            invM[time, x.agegroup_beta] += 1
-        elseif x.invtype == PNM
-            invP[time, x.agegroup_beta] += 1
-        elseif x.invtype == NPNM
-            invN[time, x.agegroup_beta] += 1
-        end
     elseif x.swap == REC
         rec[time, x.agegroup_beta] += 1
     elseif x.swap == DEAD && x.invdeath == false
@@ -72,6 +64,16 @@ function collectdaily(x, DC::DataCollection, time)
 
 end
 
+
+function readjld(prefix)
+  info("starting reading of hdf5/jld files using pmap")
+  a = pmap(1:numofsims) do x
+    filename = string(prefix, x, ".jld")
+    return load(filename)["DC"]  
+  end
+  info("pmap finished, returning function. ")
+  return a;
+end
 
 function processresults(results, foldername)
     ## This function accepts an array of DataCollection types - ie, Array{DataCollection}. Each element in this array corresponds to a datacollection object for each simulation. 

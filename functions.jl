@@ -178,7 +178,7 @@ function statetime(x::Human, P::HiaParameters)::Int32
                     if x.invdeath
                         st = rand(Truncated(Poisson(P.hospitalmean_death), P.hospitalmin_death, P.hospitalmax_death))
                     else 
-                        st = hosplengthofstay(x, P)
+                        st = hospitalinfo(x, P)[1] ## first element returns length of stay
                     end
                 end       
         :REC   => st = rand(P.recoveredmin:P.recoveredmax)
@@ -189,62 +189,84 @@ function statetime(x::Human, P::HiaParameters)::Int32
 end
 
 
-function hosplengthofstay(x::Human, P::HiaParameters)::Int32
+function hospitalinfo(x::Human, P::HiaParameters)
     ## this function is called by statetime() when the person is invasive
     ##  when the person is invasive, with no death - we want length of stay 
     ##  based on type of invasive disease and age.  see parameter file for source.
-    st::Int32 
-    
+    ## this function also returns the cost of staying in the hospital PER DAY
+    l = 0
+    c = 0
+    if x.health != INV
+        return l, c
+    end
     if x.age <= 365     ## 1 year
-        if x.invtype == MENNOD || x.invtype == MENMAJ || x.invtype == MENMIN
-            st = rand(10:14)
-        elseif x.invtype == PNM
-            st = rand(3:7)
+        if x.invtype == PNEU
+            l = rand(3:7)
+            c = 8739
         elseif x.invtype == NPNM
-            st = rand(7:11)
+            l = rand(7:11)
+            c = 10237
+        else ## its one of meningitis
+            l = rand(10:14)
+            c = 11076
         end                             
     elseif x.age > 365 && x.age <= 2555 # 1-7 years
-        if x.invtype == MENNOD || x.invtype == MENMAJ || x.invtype == MENMIN
-            st = rand(7:11)
-        elseif x.invtype == PNM
-            st = rand(2:6)
+        if x.invtype == PNEU
+            l = rand(2:6)
+            c = 7554
         elseif x.invtype == NPNM
-            st = rand(3:7)
+            l = rand(3:7)
+            c = 7088
+        else 
+            l = rand(7:11)
+            c = 8856
         end                
-    elseif x.age > 2555 && x.age <= 6205 #7 - 17
-        if x.invtype == MENNOD || x.invtype == MENMAJ || x.invtype == MENMIN
-            st = rand(3:7)
-        elseif x.invtype == PNM
-            st = rand(3:7)
+    elseif x.age > 2555 && x.age <= 6205 #8 - 17
+        if x.invtype == PNEU
+            l = rand(3:7)
+            c = 9649
         elseif x.invtype == NPNM
-            st = rand(5:9)
+            l = rand(5:9)
+            c = 7508
+        else 
+            l = rand(3:7)
+            c = 6833
         end                
-    elseif x.age > 6205 && x.age <= 21535 # 17 - 59
-        if x.invtype == MENNOD || x.invtype == MENMAJ || x.invtype == MENMIN
-            st = rand(5:9)
-        elseif x.invtype == PNM
-            st = rand(6:10)
+    elseif x.age > 6205 && x.age <= 21535 # 18 - 59
+        if x.invtype == PNEU
+            l = rand(6:10)
+            c = 13278
         elseif x.invtype == NPNM
-            st = rand(7:11)
+            l = rand(7:11)
+            c = 11696
+        else 
+            l = rand(5:9)
+            c = 9994
         end                
-    elseif x.age > 21535 && x.age <= 29200 ## 59 - 80
-        if x.invtype == MENNOD || x.invtype == MENMAJ || x.invtype == MENMIN
-            st = rand(9:13)
-        elseif x.invtype == PNM
-            st = rand(6:10)
+    elseif x.age > 21535 && x.age <= 29200 ## 60 - 80
+        if x.invtype == PNEU
+            l = rand(6:10)
+            c = 13093
         elseif x.invtype == NPNM
-            st = rand(9:13)
+            l = rand(9:13)
+            c = 13645
+        else 
+            l = rand(9:13)
+            c = 16088
         end
     else x.age > 29200 ## 80+
-        if x.invtype == MENNOD || x.invtype == MENMAJ || x.invtype == MENMIN
-            st = rand(17:21)
-        elseif x.invtype == PNM
-            st = rand(6:10)
+        if x.invtype == PNEU
+            l = rand(6:10)
+            c = 9983
         elseif x.invtype == NPNM
-            st = rand(10:14)
+            l = rand(10:14)
+            c = 12866
+        else 
+            l = rand(17:21)
+            c = 24479
         end                
     end
-
+    return l, c
 end
 
 
@@ -275,7 +297,7 @@ function beta_agegroup(age::Integer)
     end
 end
 
-function insertrandom(h::Array{Human}, P::HiaParameters, s::HEALTH)
+function insertrandom(h::Array{Human{Int64}}, P::HiaParameters, s::HEALTH)
     i = rand(1:P.gridsize) ## select a random human
     # set the swap and run the update function manually
     h[i].swap = s

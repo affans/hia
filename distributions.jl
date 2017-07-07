@@ -155,4 +155,8 @@ function distribution_contact_transitions()
     return mat, cmat
 end
 
+function distribution_sequlae(P::HiaParameters)
+    m = Categorical([P.prob_invas_maj_seq_cog, P.prob_invas_maj_seq_seiz, P.prob_invas_maj_seq_hearloss, P.prob_invas_maj_seq_motor, P.prob_invas_maj_seq_visual, P.prob_invas_maj_seq_impair, P.prob_invas_maj_seq_mimpair, P.prob_invas_min_seq_cog, P.prob_invas_min_seq_seiz, P.prob_invas_min_seq_hearloss, P.prob_invas_min_seq_motor, P.prob_invas_min_seq_visual, P.prob_invas_min_seq_impair, P.prob_invas_min_seq_mimpair, 0.846])  ## the hardcoded value is the remaining probability of no sequlae
 
+    return m
+end

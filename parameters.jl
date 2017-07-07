@@ -1,21 +1,23 @@
 ## main system enums
 @enum HEALTH SUSC LAT CAR SYMP INV REC DEAD UNDEF
 @enum GENDER MALE=1 FEMALE=2
-@enum INVTYPE NOINV=0 MENNOD=1 MENMAJ=2 MENMIN=3 PNM=4 NPNM=5
+@enum INVSEQ COGMAJ=1 SEIZMAJ=2 HEARLOSSMAJ=3 MOTORMAJ=4 VISUALMAJ=5 IMPAIRMAJ=6 MIMPAIRMAJ=7 COGMIN=8 SEIZMIN=9 HEARLOSSMIN=10 MOTORMIN=11 VISUALMIN=12 IMPAIRMIN=13 MIMPAIRMIN=14 NOSEQ=15 PNEU=16 NPNM=17
+## NOTE: Enum integer values set up this way because the categorical distribution distribution_sequlae(). Ie, if invasive is meningitis, pick a random number from this categorical distribution yeilds a number from 1 - 15 .. which I then call INVSEQ(integer_value) to convert to the Enum.. if the invasive is pneu, npnm then we just set it manually. 
+
 
 ## main system parameters
 @with_kw type ModelParameters 
-    numofsims::Int32 = 50
-    #numofprocessors::Int32 = 50
-    verbose::Bool = false
-    savejld::Bool = true
-    read_serialdatalocation::String = "./serial/"    #serialfolder in the form of "{dir}/"
-    write_serialdatalocation::String = "./serial/"   #serialfolder in the form of "{dir}/"
+    initializenew::Bool = true      ## are we initializing a new population or reading old JLD serialized data.
+    numofsims::Int32 = 50           ## how much sims to run
+    numofprocessors::Int32 = 50     ## number of processors to use    
+    savejld::Bool = true            ## whether we should save files at the end of simulation. 
+    readloc::String  = "./serial/"    #serialfolder in the form of "{dir}/"
+    writeloc::String = "./serial/"   #serialfolder in the form of "{dir}/"
     vaccineon::Bool = true
 end
 
 ## simulation parameters
-@with_kw immutable HiaParameters @deftype Int32
+@with_kw type HiaParameters @deftype Int32
     # general parameters
     simtime = 365         ## time of simulation 40 years in days
     gridsize = 100000     ## size of population 
@@ -32,13 +34,27 @@ end
     ## if invasive, probability of going to meningitis (major, minor, non-disability meningititis , pneumonia, npnm)
     ## data from the american arctic paper - might need some refinement - paper has data based on children/adult. 
 
-    #invmeningitis::Float32 = 0.33
-    ## when setting up the categorical distribution, meningitis major, minor, none must add up to 33%. The probabilities given below are scaled. In other words, for major meningitis disability its 9.5 out of a 100 people, which means 3.135 out of 33 people.  See Excel file for clarification.
-    prob_invas_men_major::Float32 = 0.03135 ### non-scaled 0.095 (7.1 - 15.2) interval 
-    prob_invas_men_minor::Float32 = 0.01881 ### non-scaled 0.057
-    prob_invas_men_nodis::Float32 = 0.27984 ### nonscaled 1 - (0.095 + 0.057) = 0.848
-    prob_invas_pneu::Float32 = 0.29
-    prob_invas_npnm::Float32 = 0.38
+    prob_invas_men::Float32 = 0.33
+    prob_invas_pneu::Float32  = 0.29
+    prob_invas_npnm::Float32  = 0.38
+
+    prob_invas_maj_seq_cog::Float32       = 0.01
+    prob_invas_maj_seq_seiz::Float32      = 0.015
+    prob_invas_maj_seq_hearloss::Float32  = 0.032
+    prob_invas_maj_seq_motor::Float32     = 0.012
+    prob_invas_maj_seq_visual::Float32    = 0.001
+    prob_invas_maj_seq_impair::Float32    = 0.007
+    prob_invas_maj_seq_mimpair::Float32   = 0.019
+
+    prob_invas_min_seq_cog::Float32       = 0.024
+    prob_invas_min_seq_seiz::Float32      = 0.0    ## no data given for this
+    prob_invas_min_seq_hearloss::Float32  = 0.006
+    prob_invas_min_seq_motor::Float32     = 0.013
+    prob_invas_min_seq_visual::Float32    = 0.001
+    prob_invas_min_seq_impair::Float32    = 0.008
+    prob_invas_min_seq_mimpair::Float32   = 0.006
+
+
 
     latentshape::Float64 = 0.588
     latentscale::Float64 = 0.458
@@ -100,7 +116,6 @@ end
 
     ## costs 
     basictreatmentcost = 0  
-    basichospitalcost  = 0
     meningitismajorcost = 0
     meningitisminorcost = 0
     pneumoniacost = 0
