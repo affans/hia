@@ -48,7 +48,9 @@ function sim(simid::Int64, P::HiaParameters, M::ModelParameters, cb)
     ag3 = Categorical(mmt[3, :])
     ag4 = Categorical(mmt[4, :])
 
-
+    wait(remotecall(info, 1, "from simulation: $simid: vaccine status: $vaccineon"))
+    wait(remotecall(info, 1, "from simulation: $simid: initialize new: $(M.initializenew)"))
+    
     ## main time loop
     @inbounds for time = 1:P.simtime
         ## start of day.... get bins for jackson agegroup contact matrix
@@ -64,7 +66,7 @@ function sim(simid::Int64, P::HiaParameters, M::ModelParameters, cb)
                 vcc(humans[i], P)    ## add vaccine specific code. 
             end
             update(humans[i], P, DC, C, time, humans)          
-            DC.system[i, time] = Int(humans[i].health)
+            #DC.system[i, time] = Int(humans[i].health)
         end
         cb(1)            
     end

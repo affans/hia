@@ -12,7 +12,7 @@ type DataCollection  ## data collection type.
     invP::Array{Int64}      # invasive, pneumonia
     invN::Array{Int64}      # invasive, NPNM
     waifu::Array{Int64}
-    system::Array{Int64}
+
 
 
     ## size x 5 matrix.. 5 because we have five "beta" agegroups, and size = simulation time
@@ -26,21 +26,17 @@ type DataCollection  ## data collection type.
                                     zeros(Int64, size, 5),        #invM
                                     zeros(Int64, size, 5),        #invP
                                     zeros(Int64, size, 5),        #invN
-                                    zeros(Int64, 5, 5),           ## waifu, 5x5 matrix (5 agegroups)   
-                                    zeros(Int64, 100000, size))   ## overview matrix
-
+                                    zeros(Int64, 5, 5))          ## waifu, 5x5 matrix (5 agegroups)                                       
 end
 
 function waifumatrix(x, DC::DataCollection, h::Array)
     ### DC.waifu is a 5x5 matrix representing the five beta agegroups
-    
     ## if the person had a successful pathogen transfer
     if x.swap == LAT 
         s = x.agegroup_beta
         f = h[x.sickfrom].agegroup_beta
         DC.waifu[s, f] = DC.waifu[s, f]  + 1
     end
-
 end
 
 function collectdaily(x, DC::DataCollection, time)
@@ -68,14 +64,31 @@ function collectdaily(x, DC::DataCollection, time)
 end
 
 
-function readjld(prefix)
+function readjld(prefix, numofsims, key)
   info("starting reading of hdf5/jld files using pmap")
   a = pmap(1:numofsims) do x
     filename = string(prefix, x, ".jld")
-    return load(filename)["DC"]  
+    return load(filename)[key]  
   end
   info("pmap finished, returning function. ")
   return a;
+end 
+
+function getgroupsizes(res, numofsims)
+    ag1 = 0
+    ag2 = 0
+    ag3 = 0
+    ag4 = 0
+    ag5 = 0
+    for i = 1:numofsims
+        s = res[i]
+        ag1 += length(find(x -> x.agegroup_beta == 1, s))
+        ag2 += length(find(x -> x.agegroup_beta == 2, s))
+        ag3 += length(find(x -> x.agegroup_beta == 3, s))
+        ag4 += length(find(x -> x.agegroup_beta == 4, s))
+        ag5 += length(find(x -> x.agegroup_beta == 5, s))
+    end
+    return ag1, ag2, ag3, ag4, ag5
 end
 
 function processresults(results, foldername)

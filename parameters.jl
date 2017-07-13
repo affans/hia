@@ -27,34 +27,34 @@ end
     vaccinetime = 0       ## years (in days) added on top of simtime
     
     ## four betas, corresponding to CDC (U shaped incidence data) age groups. 
-    betaone::Float32 = 0.0722    ## 0-2
-    betatwo::Float32 = 0.0526    ##  2-5
-    betathree::Float32 = 0.0426  ## 5-10, 60+
-    betafour::Float32 = 0.0699   ## 10-60
-    carriagereduction::Float32 = 0.5
+    betaone::Float64 = 0.0723    ## 0-2
+    betatwo::Float64 = 0.0527    ##  2-5
+    betathree::Float64 = 0.0426  ## 5-10, 60+
+    betafour::Float64 = 0.0699   ## 10-60
+    carriagereduction::Float64 = 0.5
     
     ## if invasive, probability of going to meningitis (major, minor, non-disability meningititis , pneumonia, npnm)
     ## data from the american arctic paper - might need some refinement - paper has data based on children/adult. 
 
-    prob_invas_men::Float32 = 0.33
-    prob_invas_pneu::Float32  = 0.29
-    prob_invas_npnm::Float32  = 0.38
+    prob_invas_men::Float64 = 0.33
+    prob_invas_pneu::Float64  = 0.29
+    prob_invas_npnm::Float64  = 0.38
 
-    prob_invas_maj_seq_cog::Float32       = 0.01
-    prob_invas_maj_seq_seiz::Float32      = 0.015
-    prob_invas_maj_seq_hearloss::Float32  = 0.032
-    prob_invas_maj_seq_motor::Float32     = 0.012
-    prob_invas_maj_seq_visual::Float32    = 0.001
-    prob_invas_maj_seq_impair::Float32    = 0.007
-    prob_invas_maj_seq_mimpair::Float32   = 0.019
+    prob_invas_maj_seq_cog::Float64       = 0.01
+    prob_invas_maj_seq_seiz::Float64      = 0.015
+    prob_invas_maj_seq_hearloss::Float64  = 0.032
+    prob_invas_maj_seq_motor::Float64     = 0.012
+    prob_invas_maj_seq_visual::Float64    = 0.001
+    prob_invas_maj_seq_impair::Float64    = 0.007
+    prob_invas_maj_seq_mimpair::Float64   = 0.019
 
-    prob_invas_min_seq_cog::Float32       = 0.024
-    prob_invas_min_seq_seiz::Float32      = 0.0    ## no data given for this
-    prob_invas_min_seq_hearloss::Float32  = 0.006
-    prob_invas_min_seq_motor::Float32     = 0.013
-    prob_invas_min_seq_visual::Float32    = 0.001
-    prob_invas_min_seq_impair::Float32    = 0.008
-    prob_invas_min_seq_mimpair::Float32   = 0.006
+    prob_invas_min_seq_cog::Float64       = 0.024
+    prob_invas_min_seq_seiz::Float64      = 0.0    ## no data given for this
+    prob_invas_min_seq_hearloss::Float64  = 0.006
+    prob_invas_min_seq_motor::Float64     = 0.013
+    prob_invas_min_seq_visual::Float64    = 0.001
+    prob_invas_min_seq_impair::Float64    = 0.008
+    prob_invas_min_seq_mimpair::Float64   = 0.006
 
 
 
@@ -109,7 +109,13 @@ end
     pathfour_carriage_max::Float64 = 0.98
     pathfour_symptomatic::Float64 = 1.0
 
-    ## primary dosage at 2, 4, 6 months
+    ## vaccine parameters
+    primarycoverage::Float64 = 0.77  ## source: https://www.canada.ca/en/public-health/services/publications/healthy-living/vaccine-coverage-canadian-children-highlights-2013-childhood-national-immunization-coverage-survey.html
+    boostercoverage::Float64 = 0.935 ## 72/77 # source: http://healthycanadians.gc.ca/publications/healthy-living-vie-saine/immunization-coverage-children-2013-couverture-vaccinale-enfants/alt/icc-2013-cve-eng.pdf
+    primarytimemin = 2*365 ## 2 years
+    primarytimemax = 5*365 
+    boostertimemin = 6*365
+    boostertimemax = 10*365
     doseonetime    = 60   ## 2 months - 60 days, 
     dosetwotime    = 120  ## 4 months
     dosethreetime  = 180  ## 6 months
@@ -119,7 +125,7 @@ end
     ##  -- these are per night 
     cost_physicianvisit     = 60
     cost_antibiotics        = 60
-    cost_medivac            = 0
+    cost_medivac            = 55000
     cost_seq_institute_care = 0
     cost_seq_special_school = 0
     cost_seq_general_house  = 0

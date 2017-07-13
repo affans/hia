@@ -8,13 +8,6 @@ using ProgressMeter
 using PmapProgressMeter
 using JLD
 
-# if abm
-
-#   data = runmain_parallel(n) ## data contains tuples(Human, DC) returned from main - FOR EACH SIMULATION
-# else 
-#   include("main.jl")
-# end
-
 using Lumberjack
 add_truck(LumberjackTruck("processrun.log"), "my-file-logger")
 remove_truck("console")
@@ -23,22 +16,23 @@ info("starting lumberjack process, starting repl")
 info("adding procs...")
 info("starting @everywhere include process...")
 
-addprocs(50)
+addprocs(60)
 @everywhere include("main.jl")
 
-function fullrun()
-  info(now())
-  info("starting full run: seed + pastthirty with/without vaccine")
-  info("total number of processors setup: $(nprocs())")
+
+function seed()
+info(now())
+  info("starting seed...")
+  info("total number of processors setup: $(nprocs())") 
   info("setting up Hia and Model parameters...")
   @everywhere P = HiaParameters(simtime = 30*365, vaccinetime = 10*365)
-  @everywhere M = ModelParameters(numofsims = 50)
+  @everywhere M = ModelParameters(numofsims = 50, vaccineon=false)  ## start with vaccine off
   info("\n $P"); info("\n $M");
-  
   info("starting seed pmap...")
-  resultsseed = pmap((cb, x) -> sim(x, P, M, cb), Progress(M.numofsims*P.simtime), 1:(M.numofsims), passcallback=true)   
-  info("seed finished!")
 
+  resultsseed = pmap((cb, x) -> sim(x, P, M, cb), Progress(M.numofsims*P.simtime), 1:(M.numofsims), passcallback=true)   
+
+  info("seed finished!")
   if M.savejld 
     info("M.savejld is true, checking if $(M.writeloc) exists")
     if !isdir(M.writeloc) 
@@ -55,33 +49,42 @@ function fullrun()
       hf = string(M.writeloc, "seed$i.jld")    
       save(hf, "humans", resultsseed[i][1], "DC", resultsseed[i][2], "costs", resultsseed[i][3])    
     end    
-  else 
-    info("this is a full run, save jld must be on")
-    error("savejld not on")
   end
-  info("starting past seed simulations")
-  if P.vaccinetime == 0 
-    info("vaccine time is set to zero... exiting")
-    throw("P.vaccinetime is zero.")
-  end  
+  #agsize = getgroupsizes(resultsseed)
+  return resultsseed
+end
+
+
+function pastthirty()
+  info("starting pastthirty simulations")
+  
+  info("setting up Hia and Model parameters...")
+  @everywhere P = HiaParameters(simtime = 10*365, vaccinetime = 10*365)
+  @everywhere M = ModelParameters(numofsims = 50)  ## start with vaccine off
+  
+
+  @everywhere M.vaccineon = false       ## the first set of results with vaccine off
+  @everywhere M.initializenew = false   ## make sure we dont initialize a new set of humans
+  @everywhere P.simtime = P.vaccinetime ## since sim() only looks at P.simtime
+
+  info("\n $P"); info("\n $M");
+  info("from processor $(myid()), model parameters are...")
   info("extra runtime is set to $(P.vaccinetime)")
   info("jld read folder set to $(M.readloc)")  
-  
-  @everywhere M.initializenew = false
   info("M.initialize variable set to $(M.initializenew)")
-  
-  info("starting pastthirty pmap with M.vaccineon status: $(M.vaccineon)...")  
-  @everywhere P.simtime = P.vaccinetime
+
+  info("starting pastthirty pmap with vaccine status: $(M.vaccineon)...")    
   resultsone = pmap((cb, x) -> sim(x, P, M, cb), Progress(M.numofsims*P.simtime), 1:(M.numofsims), passcallback=true)  
   info("... finished")     
+
   info("flipping M.vaccine status for rerun")
   @everywhere M.vaccineon = !M.vaccineon
-  info("starting pastthirty pmap with vaccineon status: $(M.vaccineon)...")
+  info("starting pastthirty pmap with vaccine status: $(M.vaccineon)...")
   resultstwo = pmap((cb, x) -> sim(x, P, M, cb), Progress(M.numofsims*P.simtime), 1:(M.numofsims), passcallback=true)    
   info("... finished")     
 
   info("writing results one and two files...")
-  for i=1:length(resultsone)
+  for i=1:M.numofsims
     rs1 = string(M.writeloc, "one$i.jld")    
     rs2 = string(M.writeloc, "two$i.jld")        
     save(rs1, "humans", resultsone[i][1], "DC", resultsone[i][2], "costs", resultsone[i][3])    
@@ -90,7 +93,7 @@ function fullrun()
   info("all simulation scenarios finished!")
   return resultsseed, resultsone, resultstwo
 end
-fullrun()
+seed()
 # P = HiaParameters(simtime = 30*365, vaccinetime = 10*365, betaone = 0.5, betatwo = 0.5, betathree=0.5, betafour = 0.5)
 #main(50)
 #process(500, "./serial/hser")

@@ -19,36 +19,15 @@ function todo()
     warn("Hia model => √ disease specific hospitalization length of stay")  
     warn("Hia model => in groupcounts - processed multiple times in processresults()")  
     warn("Hia model => if infected, see if sickfrom ID is valid. ")  
-    
-    
-    
-    
-    
+    warn("Hia model => m = zeros(Int64, numofsims, 8)  -- dont hard code the 8 in costs processing" ) 
 end
 
-function track(h::Human)
-    println("...health")
-    println("       cur/swap: $(h.health)/$(h.swap)")
-    println("       path:     $(h.path)")
-     println("      plvl:     $(h.plvl)")
-    println("...demographics")
-    println("       age/sex:  $(h.age) / $(h.gender)")
-    println("       age(yrs): $(h.age/365)")    
-    println("...model (_instate) variables")
-    println("       time:     $(h.timeinstate)")
-    println("       expiry:   $(h.statetime)")
-    #println("...vaccine")
-    #println("       booster:  $(h.bvaccine)")
-    #println("       # doses:  $(h.dosesgiven)")
-    
-end
-
-function carriageprobs(pa::Integer, P::HiaParameters)
-    ## get the parameters for the path integer - parameter: pa
+function carriageprobs(t::Integer, P::HiaParameters)
+    ## get the parameters for the path integer 
     minprob = 0.0
     maxprob = 0.0
     symprob = 0.0
-    @match pa begin
+    @match t begin
         1 =>begin 
                 minprob = P.pathone_carriage_min
                 maxprob = P.pathone_carriage_max
@@ -69,7 +48,7 @@ function carriageprobs(pa::Integer, P::HiaParameters)
                 maxprob = P.pathfour_carriage_max
                 symprob = P.pathfour_symptomatic                
             end
-        _ => error("Hia Model => carriage/symptomatic out of bounds")
+        _ => error("Hia Model => invalid path number given")
     end
     return minprob, maxprob, symprob
 end
@@ -120,7 +99,6 @@ function protection(h::Human)
     ## this assigns the proper protection level - based on health, recovery, age, and vaccine combinations
     ## see notes for details, and parameter file for references.
     ## note- this assigns their protection level according to their CURRENT health and not their swap. 
-
     retval = 0.0 
     ## calculates protection level. protection only makes sense for recovered or 
     if h.health == REC 
@@ -131,22 +109,21 @@ function protection(h::Human)
             ## they have been atleast sick once, so automatic 50% protection
             retval = 0.50
         else
-            ## they have never been sick, check age and vaccine status
-            if h.age < 1825 && !h.pvaccine  
-                retval = 0.0  ## <5, unvaccincated
-            elseif h.age < 1825 && h.dosesgiven == 1
-                retval = 0.50 ## <5, after primary dose 1
-            elseif h.age < 1825 && h.dosesgiven == 2 
-                retval = 0.80 ## <5, after primary dose 2
-            elseif h.age < 1825 && h.dosesgiven == 3 && h.bvaccine == false
-                retval = 0.85
-            elseif h.age < 1825 && h.dosesgiven == 3 && h.bvaccine == true 
-                retval = rand()*(0.95 - 0.85)+0.85
-            elseif h.age < 1825 
-                track(h, 1)
-                error("protection level not applied")
-            else ## they are over 5 years old, automatic 0.5 -- if they have booster, it will expire. 
-                retval = 0.5
+            if !h.pvaccine   ## no vaccine, natural immunity at age 5.
+                retval = h.age < 1825 ? retval = 0.0 : retval = 0.5
+            else
+                ## individual h has primary (and possibly booster vaccine)
+                if h.dosesgiven == 1 && h.age < h.vaccineexpirytime
+                    retval = 0.5
+                elseif h.dosesgiven == 2 && h.age < h.vaccineexpirytime
+                    retval = 0.8
+                elseif h.dosesgiven == 3 && h.age < h.vaccineexpirytime && h.bvaccine == false
+                    retval = 0.85
+                elseif h.dosesgiven == 3 && h.age < h.vaccineexpirytime && h.bvaccine == true
+                    retval = rand()*(0.95 - 0.85)+0.85
+                else #only scenario that fails from above is h.age < vaccine expiry time .. 
+                    retval = 0.5 
+                end
             end
         end    
     else 

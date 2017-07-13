@@ -3,27 +3,27 @@ type Human{T <: Integer}
     ## disease parameters (modified in make() function)
     id::T                 ## ID of the human
     health::HEALTH     ## current health status
-    swap::HEALTH       ## swap health status (works as "last status" also - see swap())
-    path::T                ## the path they will take if they get sick
-    invtype::INVSEQ    ## invasive sequlae
-    invdeath::Bool     ## whether this human is invasive and will die
-    plvl::Float32      ## protection level - 0 - 100% 
-    latcnt::T            ## how many times this person has become latent
-    carcnt::T           ## how many times this person has become carriage
-    symcnt::T            ## how many times this person has become symptomatic
-    invcnt::T            ## how many times this person has become invasive
-    deadcnt::T          ## how many times this person has died. This variable shouldnt reset. 
-    sickfrom::T       ## if person is infected, record the ID of the person who infects
-    timeinstate::T ## days spent in current health status   
-    statetime::T   ## maximum amount of days spent in health status 
-    ## contact structure and demographics
-    age::T         ## age in days  - 365 days per year
-    agegroup_beta::T         ## - NOT the jackson contact matrix group.
-    gender::GENDER     ## gender - 50% male/female
-    meetcnt::T     ## total meet count. how many times this person has met someone else.    
-    pvaccine::Bool     ## if primary vaccine is turned on
-    bvaccine::Bool     ## if booster vaccine is turned on
-    dosesgiven::T   ## doses given, 1 2 3 after primary
+    swap::HEALTH          ## swap health status (works as "last status" also - see swap())
+    path::T               ## the path they will take if they get sick
+    invtype::INVSEQ       ## invasive sequlae
+    invdeath::Bool        ## whether this human is invasive and will die
+    plvl::Float64         ## protection level - 0 - 100%  
+    latcnt::T             ## how many times this person has become latent
+    carcnt::T             ## how many times this person has become carriage
+    symcnt::T             ## how many times this person has become symptomatic
+    invcnt::T             ## how many times this person has become invasive
+    deadcnt::T            ## how many times this person has died. This variable shouldnt reset. 
+    sickfrom::T           ## if person is infected, record the ID of the person who infects
+    timeinstate::T        ## days spent in current health status   
+    statetime::T          ## maximum amount of days spent in health status 
+    age::T                ## age in days  - 365 days per year
+    agegroup_beta::T      ## - NOT the jackson contact matrix group.
+    gender::GENDER        ## gender - 50% male/female
+    meetcnt::T            ## total meet count. how many times this person has met someone else.    
+    pvaccine::Bool        ## if primary vaccine is turned on
+    bvaccine::Bool        ## if booster vaccine is turned on
+    dosesgiven::T         ## doses given, 1 2 3 after primary
+    vaccineexpirytime::T        ## how long is this vaccine protection 
     
     # constructor:: empty human - set defaults here
     ##  if changing, makesure to add/remove from reset() function
@@ -41,8 +41,9 @@ type Human{T <: Integer}
            timeinstate = 0, statetime = typemax(Int64), 
            age = 0, agegroup_beta = 0, gender = MALE,
            meetcnt = 0, 
-           pvaccine = false, bvaccine = false, 
-           dosesgiven = 0) = new(id, health, swap, path, invtype, invdeath, plvl, latcnt, carcnt, symcnt, invcnt, deadcnt, sickfrom, timeinstate, statetime, age, agegroup_beta, gender, meetcnt, pvaccine, bvaccine, dosesgiven) 
+           pvaccine = false, bvaccine = false,
+           dosesgiven = 0, 
+           vaccineexpirytime = 0) = new(id, health, swap, path, invtype, invdeath, plvl, latcnt, carcnt, symcnt, invcnt, deadcnt, sickfrom, timeinstate, statetime, age, agegroup_beta, gender, meetcnt, pvaccine, bvaccine, dosesgiven, vaccineexpirytime) 
 end
 
 function initialize(h::Array{Human{Int64}},P::HiaParameters)
@@ -90,6 +91,7 @@ function newborn(h::Human)
     h.pvaccine = false 
     h.bvaccine = false 
     h.dosesgiven = 0
+    h.vaccineexpirytime =0
 end
 
 function app(h::Human, P::HiaParameters)
