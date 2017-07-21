@@ -1,29 +1,40 @@
-
 function todo()
-    warn("Hia model => √ calculate probability distribution for death, and implement code")
-    warn("Hia model => √ update pathtaken() when vaccine is implemented")    
-    warn("Hia model => √ remove find functions, and optimize - demographics")
-    warn("Hia model => √ check if dosesgiven > 0 => pvaccine == true.")
-    warn("Hia model => √ check if bvaccine = true => dosesgiven = 3.")
-    warn("Hia model => √ ageplusplus can be absorbed into the daily lattice update function")
-    warn("Hia model => √ presymptomatic is also infectious - reduction 50% - done preliminary")
-    warn("Hia model => √ if invasive before, always mark as false")   
-    warn("Hia model => √ Implement death in invasive compartment")
-    warn("Hia model => √ Use four beta values instead of one")
-    warn("Hia model => think of a way to implement plotting for changing age distribution")
-    warn("Hia model => √ algorithm to track a human")
-    warn("Hia model => profile main() and check bottlenecks")
-    warn("Hia model => verify age brackets for contact matrix")
-    warn("Hia model => clean up cmt-ag variables in main()")  
-    warn("Hia model => clean up bins variables in main()")  
-    warn("Hia model => √ disease specific hospitalization length of stay")  
     warn("Hia model => in groupcounts - processed multiple times in processresults()")  
     warn("Hia model => if infected, see if sickfrom ID is valid. ")  
     warn("Hia model => m = zeros(Int64, numofsims, 8)  -- dont hard code the 8 in costs processing" ) 
 end
 
-function carriageprobs(t::Integer, P::HiaParameters)
-    ## get the parameters for the path integer 
+function statetime(x::Human, P::HiaParameters)
+    ## this returns the statetime for everystate..
+    ## it uses their CURRENT HEALTH.. 
+    ## so if using for swap purposes, SWAP FIRST then get statetime. 
+   
+    r = 0 ## return variable
+    @match Symbol(x.health) begin
+        :SUSC  => r = typemax(Int64)  ## no expiry for suscepitble
+        :LAT   => 
+                begin
+                   r = Int(round(rand(Truncated(LogNormal(P.latentshape, P.latentscale), P.latentmin, P.latentmax))))
+                end
+        :CAR   => r = rand(P.carriagemin:P.carriagemax) ## fixed 50 days for carriage?
+        :SYMP  => r = rand(Truncated(Poisson(P.symptomaticmean), P.symptomaticmin, P.symptomaticmax))
+        :INV   =>
+                begin
+                    if x.invdeath
+                        r = rand(Truncated(Poisson(P.hospitalmean_death), P.hospitalmin_death, P.hospitalmax_death))
+                    else 
+                        r = lengthofstay(x, P) 
+                    end
+                end       
+        :REC   => r = rand(P.recoveredmin:P.recoveredmax)
+        :DEAD  => r = typemax(Int64)        
+        _   => throw("Hia model => statetime passed in non-health enum")
+    end
+    return r
+end
+
+function pathprobability(t::Integer, P::HiaParameters)
+    ## gets the probabilities of going to carriage/symptomatic/invasive for a PATH integer. PATH could be 1, 2, 3, 4 -- assigned when person is becoming latent. 
     minprob = 0.0
     maxprob = 0.0
     symprob = 0.0
@@ -48,202 +59,239 @@ function carriageprobs(t::Integer, P::HiaParameters)
                 maxprob = P.pathfour_carriage_max
                 symprob = P.pathfour_symptomatic                
             end
+        5 =>begin 
+                minprob = P.pathfive_carriage_min
+                maxprob = P.pathfive_carriage_max
+                symprob = P.pathfive_symptomatic                
+            end
+        6 =>begin 
+                minprob = P.pathsix_carriage_min
+                maxprob = P.pathsix_carriage_max
+                symprob = P.pathsix_symptomatic                
+            end
+        7 =>begin 
+                minprob = P.pathseven_carriage_min
+                maxprob = P.pathseven_carriage_max
+                symprob = P.pathseven_symptomatic                
+            end
         _ => error("Hia Model => invalid path number given")
     end
     return minprob, maxprob, symprob
 end
 
 function pathtaken(oldhealth::HEALTH, h::Human)
-    ## calculates which path they will take based on a decision tree
-    ## the human is already latent at this point... thats why we pass in 
-    ## `oldhealth` to see what path they will take. 
-    st = 0  
-    #rintln("pathtaken(): oldhealth = $oldhealth")  
+    ## calculates which path they will take based on a decision tree. This function is run when the person is becoming latent, and depends on HOW they got to latent.
+    ## the human is already latent at this point... thats why we pass in `oldhealth` to see what path they will take. 
+    ## path definitions and probabilities are in the excel file.
     if oldhealth == REC 
-        # person got sick while in recovery period, fixed path 4
-        st = 4
-    elseif oldhealth == SUSC
-        # person got sick while as a susceptible
-        if h.age < 1825 
-            # <5 years
-            if h.plvl == 0.0
-                st = 1
-            elseif h.plvl == 0.50
-                st = 2
-            elseif h.plvl > 0.50 ### implies primary doses have been given
-                if h.bvaccine 
-                    st = 4
-                else 
-                    st = 3
-                end
+        return 6
+    elseif oldhealth == SUSC # person got sick while as a susceptible
+        if h.latcnt > 0 
+            return 7
+        end
+        if !h.pvaccine   ## no vaccine, natural immunity at age 5.
+            if h.age <= 1825 
+                return 1
             else 
-                track(h, 1)
-                error("Hia model => pathtaken() combination not found")
-            end
-        else
-            # age >= 5, and a susceptible - (either susceptible by birth or susceptible by recovery)
-            if h.age > 3650 && h.age < 21900
-                st = 3 
-            else 
-                st = 2
+                return 7
             end
         end
-    else 
-        st = 0
-    end   
-    return st
+        if h.dosesgiven == 1 && h.age < h.vaccineexpirytime
+            return 2
+        elseif h.dosesgiven == 2 && h.age < h.vaccineexpirytime
+            return 3
+        elseif h.dosesgiven == 3 && h.age < h.vaccineexpirytime && h.bvaccine == false
+            return 4
+        elseif h.dosesgiven == 3 && h.age < h.vaccineexpirytime && h.bvaccine == true
+            return 5
+        else # vaccine induced time has expired. 
+            return 7 
+        end
+    end
 end
-
 
 function protection(h::Human)
     ## this assigns the proper protection level - based on health, recovery, age, and vaccine combinations
     ## see notes for details, and parameter file for references.
     ## note- this assigns their protection level according to their CURRENT health and not their swap. 
-    retval = 0.0 
-    ## calculates protection level. protection only makes sense for recovered or 
+    
+    r = 0.0  # return value
     if h.health == REC 
-        retval = 0.90  ## fixed protection level for recovery
+        r = 0.95
     elseif h.health == SUSC 
-        ## have they been sick? ie, are the coming into susceptible after recovery period
-        if h.latcnt >= 1  
-            ## they have been atleast sick once, so automatic 50% protection
-            retval = 0.50
+        if h.latcnt > 0  ## they have been atleast sick once, so automatic 50% protection            
+            r = 0.5
         else
             if !h.pvaccine   ## no vaccine, natural immunity at age 5.
-                retval = h.age < 1825 ? retval = 0.0 : retval = 0.5
+                r = h.age < 1825 ? 0.0 : 0.5
             else
                 ## individual h has primary (and possibly booster vaccine)
                 if h.dosesgiven == 1 && h.age < h.vaccineexpirytime
-                    retval = 0.5
+                    r = 0.5
                 elseif h.dosesgiven == 2 && h.age < h.vaccineexpirytime
-                    retval = 0.8
+                    r = 0.80
                 elseif h.dosesgiven == 3 && h.age < h.vaccineexpirytime && h.bvaccine == false
-                    retval = 0.85
+                    r = 0.85
                 elseif h.dosesgiven == 3 && h.age < h.vaccineexpirytime && h.bvaccine == true
-                    retval = rand()*(0.95 - 0.85)+0.85
-                else #only scenario that fails from above is h.age < vaccine expiry time .. 
-                    retval = 0.5 
+                    r = rand()*(0.95 - 0.85)+0.85
+                else # vaccine induced time has expired. 
+                    r = 0.5 
                 end
             end
         end    
     else 
         ## they are in a compartment other than susc/rec.. no need for protection level
-        retval = 0.0
+        r = 0.0
     end
-    return retval
+    return r
 end
 
 
-
-function statetime(x::Human, P::HiaParameters)
-    ## this returns the statetime for everystate..
-    ## it uses their CURRENT HEALTH.. so if using for swap purposes, SWAP FIRST then get statetime. 
-   
-    st = 0 ## return variable
-    @match Symbol(x.health) begin
-        :SUSC  => st = typemax(Int64)  ## no expiry for suscepitble
-        :LAT   => 
-                begin
-                    #d = LogNormal(P.latentshape, P.latentscale)
-                    #st = max(P.latentmin, min(Int(ceil(rand(d))), P.latentmax))
-                    st = Int(round(rand(Truncated(LogNormal(P.latentshape, P.latentscale), P.latentmin, P.latentmax))))
-                end
-        :CAR   => st = rand(P.carriagemin:P.carriagemax) ## fixed 50 days for carriage?
-        :SYMP  => st = rand(Truncated(Poisson(P.symptomaticmean), P.symptomaticmin, P.symptomaticmax))
-        :INV   =>
-                begin
-                    if x.invdeath
-                        st = rand(Truncated(Poisson(P.hospitalmean_death), P.hospitalmin_death, P.hospitalmax_death))
-                    else 
-                        st = hospitalinfo(x, P)[1] ## first element returns length of stay
-                    end
-                end       
-        :REC   => st = rand(P.recoveredmin:P.recoveredmax)
-        :DEAD  => st = typemax(Int64)        
-        _   => throw("Hia model => statetime passed in non-health enum")
+function transmission(susc::Human, sick::Human, P::HiaParameters)
+    ## computes the transmission probability using the baseline for a susc and a sick person. If person is carriage, there is an automatic 50% reduction in beta value.
+    ## can only make the person swap to latent!
+    ## error check
+    if (sick.health != CAR) && (sick.health != SYMP) 
+        error("Hia Model => transmission() -- sick person is not actually sick")
     end
-    return st
+
+    ## use the beta_agegroup information to extract the right beta value from parameters   
+    beta = 0.0
+    ag = sick.agegroup_beta
+    if ag == 1 
+        beta = P.betaone
+    elseif ag == 2
+        beta = P.betatwo
+    elseif ag == 3 || ag == 5
+        beta = P.betathree
+    elseif ag == 4
+        beta = P.betafour
+    else 
+        error("Hia model => transmission() agegroup not correctly assigned")
+    end
+
+    ## if they are carriage or presymptomatic - apply a reduction (value set in parameters)
+    trans = (sick.health == CAR) ? beta*P.carriagereduction*(1 - susc.plvl) : beta*(1 - susc.plvl)
+    if rand() < trans   ## succesfull transfer of pathogen.      
+        susc.swap = LAT
+        susc.sickfrom = sick.id
+    end
 end
 
-
-function hospitalinfo(x::Human, P::HiaParameters)
-    ## this function is called by statetime() when the person is invasive
-    ##  when the person is invasive, with no death - we want length of stay 
-    ##  based on type of invasive disease and age.  see parameter file for source.
-    ## this function also returns the cost of staying in the hospital PER DAY
-    l = 0
-    c = 0
-    if x.health != INV
-        return l, c
-    end
+function lengthofstay(x::Human, P::HiaParameters)
+    ## this function returns the length of stay in hospital, called by statetime() when the person is invasive
+    ## if x.invdeath == true, then this function will return zero -- but the actual length of stay is determined in statetime()    
+    
+    l = 0 ## return value
     if x.age <= 365     ## 1 year
         if x.invtype == PNEU
             l = rand(3:7)
-            c = 8739
         elseif x.invtype == NPNM
             l = rand(7:11)
-            c = 10237
         else ## its one of meningitis
             l = rand(10:14)
-            c = 11076
         end                             
     elseif x.age > 365 && x.age <= 2555 # 1-7 years
         if x.invtype == PNEU
             l = rand(2:6)
-            c = 7554
         elseif x.invtype == NPNM
             l = rand(3:7)
-            c = 7088
         else 
             l = rand(7:11)
-            c = 8856
         end                
     elseif x.age > 2555 && x.age <= 6205 #8 - 17
         if x.invtype == PNEU
             l = rand(3:7)
-            c = 9649
         elseif x.invtype == NPNM
             l = rand(5:9)
-            c = 7508
         else 
             l = rand(3:7)
-            c = 6833
         end                
     elseif x.age > 6205 && x.age <= 21535 # 18 - 59
         if x.invtype == PNEU
             l = rand(6:10)
-            c = 13278
         elseif x.invtype == NPNM
             l = rand(7:11)
-            c = 11696
         else 
             l = rand(5:9)
-            c = 9994
         end                
     elseif x.age > 21535 && x.age <= 29200 ## 60 - 80
         if x.invtype == PNEU
             l = rand(6:10)
-            c = 13093
         elseif x.invtype == NPNM
             l = rand(9:13)
-            c = 13645
         else 
             l = rand(9:13)
-            c = 16088
         end
     else x.age > 29200 ## 80+
         if x.invtype == PNEU
             l = rand(6:10)
-            c = 9983
         elseif x.invtype == NPNM
             l = rand(10:14)
-            c = 12866
         else 
             l = rand(17:21)
+        end                
+    end
+    return l
+end
+
+function hospitalcost(x::Human, P::HiaParameters)    
+    ## this function returns the hospital costs PER DAY for a particular person x.
+    c = 0  ## return value    
+    if x.health == INV && x.invdeath  
+        c = 11548  ## use the average cost
+        return c
+    end
+    if x.age <= 365     ## 1 year
+        if x.invtype == PNEU
+            c = 8739
+        elseif x.invtype == NPNM
+            c = 10237
+        else ## its one of meningitis
+            c = 11076
+        end                             
+    elseif x.age > 365 && x.age <= 2555 # 1-7 years
+        if x.invtype == PNEU
+            c = 7554
+        elseif x.invtype == NPNM
+            c = 7088
+        else 
+            c = 8856
+        end                
+    elseif x.age > 2555 && x.age <= 6205 #8 - 17
+        if x.invtype == PNEU
+            c = 9649
+        elseif x.invtype == NPNM
+            c = 7508
+        else 
+            c = 6833
+        end                
+    elseif x.age > 6205 && x.age <= 21535 # 18 - 59
+        if x.invtype == PNEU
+            c = 13278
+        elseif x.invtype == NPNM
+            c = 11696
+        else 
+            c = 9994
+        end                
+    elseif x.age > 21535 && x.age <= 29200 ## 60 - 80
+        if x.invtype == PNEU
+            c = 13093
+        elseif x.invtype == NPNM
+            c = 13645
+        else 
+            c = 16088
+        end
+    else x.age > 29200 ## 80+
+        if x.invtype == PNEU
+            c = 9983
+        elseif x.invtype == NPNM
+            c = 12866
+        else 
             c = 24479
         end                
     end
-    return l, c
+    return c
 end
 
 

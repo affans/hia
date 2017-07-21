@@ -7,8 +7,8 @@ using DataArrays, DataFrames
 using ProgressMeter
 using PmapProgressMeter
 using JLD
-
 using Lumberjack
+
 add_truck(LumberjackTruck("processrun.log"), "my-file-logger")
 remove_truck("console")
 
@@ -21,12 +21,12 @@ addprocs(60)
 
 
 function seed()
-info(now())
+  info(now())
   info("starting seed...")
   info("total number of processors setup: $(nprocs())") 
   info("setting up Hia and Model parameters...")
-  @everywhere P = HiaParameters(simtime = 30*365, vaccinetime = 10*365)
-  @everywhere M = ModelParameters(numofsims = 50, vaccineon=false)  ## start with vaccine off
+  @everywhere P = HiaParameters(simtime = 30*365, vaccinetime = 10*365, betaone = 0.10, betatwo = 0.10, betathree = 0.10, betafour=0.10)
+  @everywhere M = ModelParameters(numofsims = 10, vaccineon=false)  ## start with vaccine off
   info("\n $P"); info("\n $M");
   info("starting seed pmap...")
 

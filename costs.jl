@@ -23,7 +23,11 @@ function dailycosts(x::Human, P::HiaParameters, C::CostCollection)
 end
 
 function statecost(x::Human, P::HiaParameters)
-    cc = 0 #calculated cost
+    
+    totalhosp = 0 ## hospital cost 
+    totalseq  = 0 ## sequlae cost 
+    totalmed  = 0 ## medivac cost   
+    
     state = x.health
     @match Symbol(state) begin
         :SUSC => cc = 0 # no cost for susceptible
@@ -31,17 +35,28 @@ function statecost(x::Human, P::HiaParameters)
         :CAR  => cc = 0 # no cost for carriage 
         :SYMP => 
             begin
-               cc = P.cost_physicianvisit + P.cost_antibiotics               
+               totalhosp = P.cost_physicianvisit + P.cost_antibiotics               
             end
         :INV  => 
             begin
-                t = hospitalinfo(x, P)[2]  ## function returns a tuple, [1] is length of stay, [2] is cost of hospital stay per night. 
-                m = x.agegroup_beta == 1 ? P.cost_medivac : 0
-                s = 0  ## cost of sequlae
-                cc = (t*x.statetime) + m + s
+                totalhosp = hospitalcost(x, P) * x.statetime  ## total hospital cost = daily cost * time in hospital
+                totalmed  = x.agegroup_beta == 1 ? P.cost_medivac : 0
+                ## invtype should've been set.. (in tests.. check if x.invtype == NOINV when person is invasive)
+                if x.invtype != MENNOSEQ, x.invtype != PNEU && x.invtype != NPNM  
+                    ## the person has either major/minor sequlae. 
+                    s = string(x.invtype)[(end - 2):end]
+                    if s == "MAJ"
+                        totalseq = 0
+                    elseif s == "MIN"
+                        totalseq = 0
+                    else 
+                        error("what?")
+                    end
+                end                            
             end
         :REC  => cc = 0 # no cost for carriage         
         _     => cc = 0
     end        
-    return cc
+    return totalhosp + totalmed + totalseq
 end
+

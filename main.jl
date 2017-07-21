@@ -18,6 +18,7 @@ include("vaccine.jl")
 include("functions.jl")
 include("costs.jl")
 
+## HI - lots of information -  link: http://antimicrobe.org/b67.asp#t3a
 
 function setuphumans(simid::Int64, P::HiaParameters, M::ModelParameters)
     ## This function sets up the humans either by initializing them as new humans, or by reading serial files.  

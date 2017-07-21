@@ -3,7 +3,7 @@
 ## if changing HEALTH ENUM, remember to change the costcollection construction in main()...
 @enum HEALTH SUSC=1 LAT=2 CAR=3 SYMP=4 INV=5 REC=6 DEAD=7 UNDEF=8
 @enum GENDER MALE=1 FEMALE=2
-@enum INVSEQ COGMAJ=1 SEIZMAJ=2 HEARLOSSMAJ=3 MOTORMAJ=4 VISUALMAJ=5 IMPAIRMAJ=6 MIMPAIRMAJ=7 COGMIN=8 SEIZMIN=9 HEARLOSSMIN=10 MOTORMIN=11 VISUALMIN=12 IMPAIRMIN=13 MIMPAIRMIN=14 NOSEQ=15 PNEU=16 NPNM=17
+@enum INVSEQ COGMAJ=1 SEIZMAJ=2 HEARLOSSMAJ=3 MOTORMAJ=4 VISUALMAJ=5 IMPAIRMAJ=6 MIMPAIRMAJ=7 COGMIN=8 SEIZMIN=9 HEARLOSSMIN=10 MOTORMIN=11 VISUALMIN=12 IMPAIRMIN=13 MIMPAIRMIN=14 MENNOSEQ=15 PNEU=16 NPNM=17 NOINV=18
 ## NOTE: Enum integer values set up this way because the categorical distribution distribution_sequlae(). Ie, if invasive is meningitis, pick a random number from this categorical distribution yeilds a number from 1 - 15 .. which I then call INVSEQ(integer_value) to convert to the Enum.. if the invasive is pneu, npnm then we just set it manually. 
 
 
@@ -56,7 +56,7 @@ end
     prob_invas_min_seq_impair::Float64    = 0.008
     prob_invas_min_seq_mimpair::Float64   = 0.006
 
-
+   
 
     latentshape::Float64 = 0.588
     latentscale::Float64 = 0.458
@@ -75,8 +75,6 @@ end
     recoveredmin = 2*365  ## two years for minimum time of staying recovered 
     recoveredmax = 5*365  ## max time of staying recovered.    
 
-    invasive_nohospital = 10 ## fixed 10 days .. duration of treatment. s
-        
     ## how long they will stay in hospital if invasive AND not marked for death
     hospitalmin_nodeath = 8    ## if no death is marked for invasive, 
     hospitalmax_nodeath = 12   ##  length 8 - 12 days
@@ -109,6 +107,21 @@ end
     pathfour_carriage_max::Float64 = 0.98
     pathfour_symptomatic::Float64 = 1.0
 
+    ## path five
+    pathfive_carriage_min::Float64 = 0.90
+    pathfive_carriage_max::Float64 = 0.98
+    pathfive_symptomatic::Float64 = 1.0
+
+    ## path six
+    pathsix_carriage_min::Float64 = 0.90
+    pathsix_carriage_max::Float64 = 0.98
+    pathsix_symptomatic::Float64 = 1.0
+
+    ## path seven
+    pathseven_carriage_min::Float64 = 0.90
+    pathseven_carriage_max::Float64 = 0.98
+    pathseven_symptomatic::Float64 = 1.0
+
     ## vaccine parameters
     primarycoverage::Float64 = 0.77  ## source: https://www.canada.ca/en/public-health/services/publications/healthy-living/vaccine-coverage-canadian-children-highlights-2013-childhood-national-immunization-coverage-survey.html
     boostercoverage::Float64 = 0.935 ## 72/77 # source: http://healthycanadians.gc.ca/publications/healthy-living-vie-saine/immunization-coverage-children-2013-couverture-vaccinale-enfants/alt/icc-2013-cve-eng.pdf
@@ -124,8 +137,10 @@ end
     ## costs 
     ##  -- these are per night 
     cost_physicianvisit     = 60
-    cost_antibiotics        = 60
+    cost_antibiotics        = 0
     cost_medivac            = 55000
+    cost_meningitis_major   = 1004080
+
     cost_seq_institute_care = 0
     cost_seq_special_school = 0
     cost_seq_general_house  = 0

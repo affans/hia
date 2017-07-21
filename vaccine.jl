@@ -2,10 +2,10 @@
 function dose(h::Human)
   ## this function applies a dose 
   if h.pvaccine
-    h.dosesgiven += 1
-    if h.dosesgiven > 3 
+    if h.dosesgiven == 3 
       error("Hia model => more than three primary doses given")
     end
+    h.dosesgiven += 1        
   end
   return nothing
 end
@@ -37,5 +37,8 @@ function vcc(x::Human, P::HiaParameters)
             end
         end 
         x.plvl = protection(x)	
+    end
+    if x.age >= x.vaccineexpirytime && x.pvaccine 
+        x.plvl = protection(x)
     end
 end

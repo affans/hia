@@ -31,7 +31,7 @@ type Human{T <: Integer}
            health = SUSC, 
            swap   = UNDEF, 
            path   = 0, 
-           invtype = NOSEQ, 
+           invtype = NOINV, 
            invdeath = false,
            plvl   = 0,
            latcnt = 0,
@@ -74,7 +74,7 @@ function newborn(h::Human)
     h.health = SUSC
     h.swap   = UNDEF
     h.path   = 0   
-    h.invtype = NOSEQ
+    h.invtype = NOINV
     h.invdeath = false
     h.plvl   = 0 #protection(h)
     h.latcnt = 0
@@ -130,7 +130,7 @@ function tpp(x::Human, P::HiaParameters)
             :SUSC => error("Hia model => A susceptible has expired - how?")
             :LAT  =>begin ## latency has expired, moving to either carriage or symptomatic or invasive, depends on age
                         ## get their min/max carriage probs and whether they will go to invasive
-                        minp, maxp, invp  = carriageprobs(x.path, P)  ## path should've been set when they became latent -- see swap() function. 
+                        minp, maxp, invp  = pathprobability(x.path, P)  ## path should've been set when they became latent -- see swap() function. 
                         pc = rand()*(maxp - minp) + minp  ## randomly sample probability to carriage from range
                         if rand() < pc 
                             x.swap = CAR  ## going to carriage
@@ -147,7 +147,7 @@ function tpp(x::Human, P::HiaParameters)
             :SYMP => x.swap = REC
             :INV  => 
                     begin ## person is coming OUT of invasive
-                        x.invtype = NOSEQ  ## if the swap is dead, this gets reset anyways. 
+                        x.invtype = NOINV  ## if the swap is dead, this gets reset anyways. 
                         ## if invdeath was on.. they will die..     
                         x.swap = x.invdeath == true ? DEAD : REC    
                     end
@@ -199,36 +199,6 @@ function dailycontact(x::Human, P::HiaParameters, ag1, ag2, ag3, ag4, newborns, 
 end
 
 
-function transmission(susc::Human, sick::Human, P::HiaParameters)
-    ## computes the transmission probability using the baseline for a susc and a sick person. If person is carriage, there is an automatic 50% reduction in beta value.
-    ## can only make the person swap to latent!
-    ## error check
-    if (sick.health != CAR) && (sick.health != SYMP) 
-        error("Hia Model => transmission() -- sick person is not actually sick")
-    end
-
-    ## use the beta_agegroup information to extract the right beta value from parameters   
-    beta = 0.0
-    ag = sick.agegroup_beta
-    if ag == 1 
-        beta = P.betaone
-    elseif ag == 2
-        beta = P.betatwo
-    elseif ag == 3 || ag == 5
-        beta = P.betathree
-    elseif ag == 4
-        beta = P.betafour
-    else 
-        error("Hia model => transmission() agegroup not correctly assigned")
-    end
-
-    ## if they are carriage or presymptomatic - apply a reduction (value set in parameters)
-    trans = (sick.health == CAR) ? beta*P.carriagereduction*(1 - susc.plvl) : beta*(1 - susc.plvl)
-    if rand() < trans   ## succesfull transfer of pathogen.      
-        susc.swap = LAT
-        susc.sickfrom = sick.id
-    end
-end
 
 function swap(h::Human, P::HiaParameters)
     ## this function moves the human to a new compartment. 
@@ -277,10 +247,7 @@ function swap(h::Human, P::HiaParameters)
     h.timeinstate = 0    ## they are swapping to new state, reset their time.
     h.statetime = statetime(h, P)  ## REMEMBER TO SWAP FIRST .. this gets the statetime of their current health
     h.path = h.health == LAT ? pathtaken(oldhealth, h) : 0
-    ## get their path, path depends on protection lvl  - so always update path BEFORE protection lvl. 
-    ## ie, if the person is swappning to latent (ie, x.health = latent set above), protection() in the next line will return 0 for path taken.
-    ## slight inconvenient "feature": when transferring from REC -> SUS (ie, health = SUS, oldhealth = REC), the pathtaken is "4".. however, the person's path isnt actually determined until he moves to latent
-    h.plvl = protection(h) ## this will get a new protection level, based on the new health we just set above
+    h.plvl = protection(h) 
 
     ## update individual counters based on the new health
     if h.health == LAT   
@@ -303,7 +270,7 @@ function update(x::Human, P::HiaParameters, DC::DataCollection, C::CostCollectio
         ## run daily data collection
         collectdaily(x, DC, time)
 
-        ## run daily cost function
+        ## run daily cost function, if the person is switching 
         dailycosts(x, P, C)
 
         ## run waifu
