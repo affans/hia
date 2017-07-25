@@ -15,7 +15,7 @@ function processcosts(prefix, numofsims)
     return a; 
 end
 
-function dailycosts(x::Human, P::HiaParameters, C::CostCollection)
+function dailycosts(x::Human, P::HiaParameters, C::CostCollection, t)
     rowid = x.id
     colid = Int(x.health)
     C.costmatrix[rowid, colid] += statecost(x, P)
@@ -23,11 +23,12 @@ function dailycosts(x::Human, P::HiaParameters, C::CostCollection)
 end
 
 function statecost(x::Human, P::HiaParameters)
-    
-    totalhosp = 0 ## hospital cost 
-    totalseq  = 0 ## sequlae cost 
-    totalmed  = 0 ## medivac cost   
-    
+    totalphys    = 0 ## physician
+    totalhosp    = 0 ## hospital cost 
+    totalmed     = 0 ## medivac cost   
+    totalseqmaj  = 0 ## sequlae cost 
+    totalseqmin  = 0 ## sequlae cost 
+
     state = x.health
     @match Symbol(state) begin
         :SUSC => cc = 0 # no cost for susceptible
@@ -35,20 +36,20 @@ function statecost(x::Human, P::HiaParameters)
         :CAR  => cc = 0 # no cost for carriage 
         :SYMP => 
             begin
-               totalhosp = P.cost_physicianvisit + P.cost_antibiotics               
+               totalphys = P.cost_physicianvisit + P.cost_antibiotics               
             end
         :INV  => 
             begin
                 totalhosp = hospitalcost(x, P) * x.statetime  ## total hospital cost = daily cost * time in hospital
                 totalmed  = x.agegroup_beta == 1 ? P.cost_medivac : 0
                 ## invtype should've been set.. (in tests.. check if x.invtype == NOINV when person is invasive)
-                if x.invtype != MENNOSEQ, x.invtype != PNEU && x.invtype != NPNM  
+                if x.invtype != MENNOSEQ  x.invtype != PNEU && x.invtype != NPNM  
                     ## the person has either major/minor sequlae. 
                     s = string(x.invtype)[(end - 2):end]
                     if s == "MAJ"
-                        totalseq = 0
+                        totalseqmaj = P.cost_meningitis_major * (x.agedeath/365 - x.age/365)
                     elseif s == "MIN"
-                        totalseq = 0
+                        totalseqmin = 0
                     else 
                         error("what?")
                     end

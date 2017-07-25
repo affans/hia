@@ -38,7 +38,7 @@ function vcc(x::Human, P::HiaParameters)
         end 
         x.plvl = protection(x)	
     end
-    if x.age >= x.vaccineexpirytime && x.pvaccine 
+    if x.age == x.vaccineexpirytime && x.pvaccine 
         x.plvl = protection(x)
     end
 end

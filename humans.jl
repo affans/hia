@@ -17,6 +17,7 @@ type Human{T <: Integer}
     timeinstate::T        ## days spent in current health status   
     statetime::T          ## maximum amount of days spent in health status 
     age::T                ## age in days  - 365 days per year
+    agedeath::T           ## age of death - in days.
     agegroup_beta::T      ## - NOT the jackson contact matrix group.
     gender::GENDER        ## gender - 50% male/female
     meetcnt::T            ## total meet count. how many times this person has met someone else.    
@@ -39,11 +40,11 @@ type Human{T <: Integer}
            symcnt = 0,
            invcnt = 0, deadcnt = 0, sickfrom = 0,
            timeinstate = 0, statetime = typemax(Int64), 
-           age = 0, agegroup_beta = 0, gender = MALE,
+           age = 0, agedeath=0, agegroup_beta = 0, gender = MALE,
            meetcnt = 0, 
            pvaccine = false, bvaccine = false,
            dosesgiven = 0, 
-           vaccineexpirytime = 0) = new(id, health, swap, path, invtype, invdeath, plvl, latcnt, carcnt, symcnt, invcnt, deadcnt, sickfrom, timeinstate, statetime, age, agegroup_beta, gender, meetcnt, pvaccine, bvaccine, dosesgiven, vaccineexpirytime) 
+           vaccineexpirytime = 0) = new(id, health, swap, path, invtype, invdeath, plvl, latcnt, carcnt, symcnt, invcnt, deadcnt, sickfrom, timeinstate, statetime, age, agedeath, agegroup_beta, gender, meetcnt, pvaccine, bvaccine, dosesgiven, vaccineexpirytime) 
 end
 
 function initialize(h::Array{Human{Int64}},P::HiaParameters)
@@ -60,8 +61,10 @@ function demographics(h::Array{Human{Int64}}, P::HiaParameters)
         ## the distribution is index 1-based so if we get index one below, this means they are under 1 years old
         ageyear = findfirst(x -> rn <= x, age_cdf)
         ageyear = ageyear - 1 ## since distribution is 1-based
-        x.age =  rand(ageyear*365:ageyear*365 + 365)   ## convert to days
+        x.age =  min(rand(ageyear*365:ageyear*365 + 365), 85*365)   ## convert to days // capped at 85 years old.. 
         x.agegroup_beta = beta_agegroup(x.age)
+        ddist = distribution_death(x.age)
+        x.agedeath = x.age + rand(ddist)*365 ## convert to days
         x.gender = rand() < 0.5 ? FEMALE : MALE
         x.plvl = protection(x)
     end
@@ -85,6 +88,7 @@ function newborn(h::Human)
     h.timeinstate = 0
     h.statetime = typemax(Int64) 
     h.age = 0
+    h.agedeath = rand(distribution_death(0))*365 ## convert to days
     h.agegroup_beta = beta_agegroup(0)
     h.gender = rand() < 0.5 ? FEMALE : MALE
     h.meetcnt = 0
@@ -99,23 +103,17 @@ function app(h::Human, P::HiaParameters)
     ## output: age++, might possibly die
     h.age += 1   ## increase age by one
     tage = h.age ## store as temp
-    
+    if tage > h.agedeath
+        h.swap = DEAD  ##swap to natural death
+        h.deadcnt += 1
+    end
     # check at a yearly level for death, new protection level, and recalculate agegroup_beta
     if mod(tage, 365) == 0
-        # 5 year mark, if susceptible, booster protection will expire and person will go to 0.5 protection level
         if tage == 1825  
             h.plvl = protection(h)
         end
         # every year, recalculate agegroup
         h.agegroup_beta = beta_agegroup(tage)
-        
-        # every year, check for death
-        ageyears = Int(tage/365)
-        if rand() < distribution_ageofdeath(ageyears, h.gender)
-            h.swap = DEAD  ##swap to natural death
-            h.deadcnt += 1
-            ##newborn(h) 
-        end
     end         
 end
 
@@ -130,13 +128,13 @@ function tpp(x::Human, P::HiaParameters)
             :SUSC => error("Hia model => A susceptible has expired - how?")
             :LAT  =>begin ## latency has expired, moving to either carriage or symptomatic or invasive, depends on age
                         ## get their min/max carriage probs and whether they will go to invasive
-                        minp, maxp, invp  = pathprobability(x.path, P)  ## path should've been set when they became latent -- see swap() function. 
+                        minp, maxp, symp  = pathprobability(x.path, P)  ## path should've been set when they became latent -- see swap() function. 
                         pc = rand()*(maxp - minp) + minp  ## randomly sample probability to carriage from range
                         if rand() < pc 
                             x.swap = CAR  ## going to carriage
                         else
                             ## going to symptomatic or invasive
-                            if rand() < (1 - invp) && x.invcnt == 0
+                            if rand() < (1 - symp) && x.invcnt == 0
                                 x.swap = INV
                             else 
                                 x.swap = SYMP
@@ -175,17 +173,20 @@ function dailycontact(x::Human, P::HiaParameters, ag1, ag2, ag3, ag4, newborns, 
     end  
     agtocontact = rand(dist) ## pick a random number from the distribution
     if agtocontact == 1
-        x_rnd = rand(newborns)
+        x_rnd = length(newborns) != 0 ? rand(newborns) : 0
     elseif agtocontact == 2
-        x_rnd = rand(first)            
+        x_rnd = length(first) != 0 ? rand(first) : 0         
     elseif agtocontact == 3
-        x_rnd = rand(second)            
+        x_rnd = length(second) != 0 ? rand(second) : 0            
     elseif agtocontact == 4
-        x_rnd = rand(third)            
+        x_rnd = length(third) != 0 ? rand(third) : 0        
     else
         error("cant happen")
     end        
-    ## at this point, human x and randhuman are going to contact each other.         
+    ## at this point, human x and randhuman are going to contact each other.        
+    if x_rnd == 0 
+        return nothing
+    end
     ## check if transmission criteria is satisfied
     t = (x.health == SUSC || x.health == REC) && (x_rnd.health == CAR || x_rnd.health == SYMP)
     y = (x_rnd.health == SUSC || x_rnd.health == REC) && (x.health == CAR || x.health == SYMP)  
@@ -195,7 +196,8 @@ function dailycontact(x::Human, P::HiaParameters, ag1, ag2, ag3, ag4, newborns, 
         transmission(x_rnd, x, P)
     end          
     x.meetcnt += 1
-    x_rnd.meetcnt += 1       
+    x_rnd.meetcnt += 1 
+    return nothing      
 end
 
 
@@ -271,7 +273,7 @@ function update(x::Human, P::HiaParameters, DC::DataCollection, C::CostCollectio
         collectdaily(x, DC, time)
 
         ## run daily cost function, if the person is switching 
-        dailycosts(x, P, C)
+        #dailycosts(x, P, C)
 
         ## run waifu
         #waifumatrix(x, DC, humans)

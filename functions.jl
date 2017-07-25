@@ -239,7 +239,7 @@ function hospitalcost(x::Human, P::HiaParameters)
     ## this function returns the hospital costs PER DAY for a particular person x.
     c = 0  ## return value    
     if x.health == INV && x.invdeath  
-        c = 11548  ## use the average cost
+        c = P.cost_averagehospital  ## use the average cost
         return c
     end
     if x.age <= 365     ## 1 year
@@ -302,7 +302,7 @@ function jackson_agegroup(age::Integer)
         0:365       => 1  # 0 - 1  ## completed first year
         366:1460    => 2  # 2 - 4  ## completed upto 4 years
         1461:3285   => 3  # 5- 10  ## starting 5th year, completed 10 years
-        3285:36501  => 4  # 10+
+        3285:43800  => 4  # 10+
         _           => error("Hia Model => age too large in jackson_agegroup()")
     end
 end

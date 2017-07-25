@@ -49,8 +49,8 @@ function sim(simid::Int64, P::HiaParameters, M::ModelParameters, cb)
     ag3 = Categorical(mmt[3, :])
     ag4 = Categorical(mmt[4, :])
 
-    wait(remotecall(info, 1, "from simulation: $simid: vaccine status: $vaccineon"))
-    wait(remotecall(info, 1, "from simulation: $simid: initialize new: $(M.initializenew)"))
+    wait(remotecall(info, 1, "simulation: $simid is starting"))
+    #wait(remotecall(info, 1, "from simulation: $simid: initialize new: $(M.initializenew)"))
     
     ## main time loop
     @inbounds for time = 1:P.simtime
@@ -76,7 +76,6 @@ end
 
 
 
-    
 
 #  P = HiaParameters(simtime = 100, gridsize = 100000, betaone = 1, betatwo = 1, betathree = 1, betafour = 1)
   #humans = Array{Human}(P.gridsize);

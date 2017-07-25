@@ -107,6 +107,34 @@ function distribution_age()
     return ProbAge
 end
 
+
+function distribution_death(a::Int64)
+    r = nothing
+    @match a begin
+        0:365       => r = Binomial(100000,	0.000718)
+        366:1460    => r = Binomial(97870,	0.000738735)
+        1461:3285   => r = Binomial(97771,	0.000700617)
+        3286:5110   => r = Binomial(97475,	0.000652475)
+        5111:6935   => r = Binomial(97322,	0.000603152)
+        6936:8760   => r = Binomial(95882,	0.00056945)
+        8761:10585  => r = Binomial(94286,	0.000534544)
+        10586:12410 => r = Binomial(92897,	0.000497325)
+        12411:14235 => r = Binomial(92164,	0.000450284)
+        14236:16060 => r = Binomial(91096,	0.000406165)
+        16061:17885 => r = Binomial(89859,	0.000360565)
+        17886:19710 => r = Binomial(87906,	0.00031966)
+        19711:21535 => r = Binomial(86305,	0.000273449)
+        21536:23360 => r = Binomial(84187,	0.000226876)
+        23361:25185 => r = Binomial(79212,	0.000190628)
+        25186:27010 => r = Binomial(68546,	0.000176524)
+        27011:28835 => r = Binomial(54559,	0.000175956)
+        28836:30660 => r = Binomial(37495,	0.000208028)
+        30661:32485 => r = Binomial(23130,	0.000263727)
+        32486:43800 => r = Binomial(9450,	0.000666667)
+        _           => error("Hia Model => age of death")
+    end
+end
+
 function distribution_ageofdeath(a::Int64, g::GENDER)
     ##matlab curve fitting, 6th/4th degree polynomial...no "center of scale", "bisquare"
     rval = 0.0

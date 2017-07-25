@@ -38,3 +38,11 @@ funch(h::UpdatedHuman) = h.a + 1
 #   %3 = add i64 %2, 1
 #   ret i64 %3
 # }
+
+
+using DataArrays, DataFrames
+costs = DataFrame(ID = Int64[], ageofonset = Int64[], yearofonset = Int64[], typeofdisease = Int64[],physiciancost = Int64[], hospitalcost = Int64[], medivaccost = Int64[], seqmajor = Int64[], seqminor = Int64[], seqmajor = Int64[] )
+
+push!(costs, [1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+costs[findin(costs[:ID], 3), :]

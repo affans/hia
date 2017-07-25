@@ -27,10 +27,16 @@ end
     vaccinetime = 0       ## years (in days) added on top of simtime
     
     ## four betas, corresponding to CDC (U shaped incidence data) age groups. 
-    betaone::Float64 = 0.0723    ## 0-2
-    betatwo::Float64 = 0.0527    ##  2-5
+    # betaone::Float64 = 0.0723    ## 0-2
+    # betatwo::Float64 = 0.0527    ##  2-5
+    # betathree::Float64 = 0.0426  ## 5-10, 60+
+    # betafour::Float64 = 0.0699   ## 10-60
+
+    betaone::Float64 = 0.0773    ## 0-2
+    betatwo::Float64 = 0.0477    ##  2-5
     betathree::Float64 = 0.0426  ## 5-10, 60+
     betafour::Float64 = 0.0699   ## 10-60
+
     carriagereduction::Float64 = 0.5
     
     ## if invasive, probability of going to meningitis (major, minor, non-disability meningititis , pneumonia, npnm)
@@ -95,22 +101,22 @@ end
     ## path two
     pathtwo_carriage_min::Float64 = 0.60
     pathtwo_carriage_max::Float64 = 0.90
-    pathtwo_symptomatic::Float64 = 0.95
+    pathtwo_symptomatic::Float64 = 0.60 
     
     ## path three
     paththree_carriage_min::Float64 = 0.90
     paththree_carriage_max::Float64 = 0.98
-    paththree_symptomatic::Float64 = 0.98
+    paththree_symptomatic::Float64 = 0.90
 
     ## path four
     pathfour_carriage_min::Float64 = 0.90
     pathfour_carriage_max::Float64 = 0.98
-    pathfour_symptomatic::Float64 = 1.0
+    pathfour_symptomatic::Float64 = 0.93
 
     ## path five
     pathfive_carriage_min::Float64 = 0.90
     pathfive_carriage_max::Float64 = 0.98
-    pathfive_symptomatic::Float64 = 1.0
+    pathfive_symptomatic::Float64 = 0.97
 
     ## path six
     pathsix_carriage_min::Float64 = 0.90
@@ -118,9 +124,9 @@ end
     pathsix_symptomatic::Float64 = 1.0
 
     ## path seven
-    pathseven_carriage_min::Float64 = 0.90
-    pathseven_carriage_max::Float64 = 0.98
-    pathseven_symptomatic::Float64 = 1.0
+    pathseven_carriage_min::Float64 = 0.60
+    pathseven_carriage_max::Float64 = 0.90
+    pathseven_symptomatic::Float64 = 0.95
 
     ## vaccine parameters
     primarycoverage::Float64 = 0.77  ## source: https://www.canada.ca/en/public-health/services/publications/healthy-living/vaccine-coverage-canadian-children-highlights-2013-childhood-national-immunization-coverage-survey.html
@@ -139,12 +145,12 @@ end
     cost_physicianvisit     = 60
     cost_antibiotics        = 0
     cost_medivac            = 55000
-    cost_meningitis_major   = 1004080
+    cost_averagehospital    = 11548  ## average cost of hospital, used if invdeath = true
+    
+    
+    cost_meningitis_major   = 109664 ## per year major seq cost
 
-    cost_seq_institute_care = 0
-    cost_seq_special_school = 0
-    cost_seq_general_house  = 0
-    cost_seq_minor_dis      = 0
+
 end
 
 
