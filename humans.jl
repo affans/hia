@@ -103,10 +103,7 @@ function app(h::Human, P::HiaParameters)
     ## output: age++, might possibly die
     h.age += 1   ## increase age by one
     tage = h.age ## store as temp
-    if tage > h.agedeath
-        h.swap = DEAD  ##swap to natural death
-        h.deadcnt += 1
-    end
+
     # check at a yearly level for death, new protection level, and recalculate agegroup_beta
     if mod(tage, 365) == 0
         if tage == 1825  
@@ -114,6 +111,15 @@ function app(h::Human, P::HiaParameters)
         end
         # every year, recalculate agegroup
         h.agegroup_beta = beta_agegroup(tage)
+
+        # every year, check for death
+        ageyears = Int(tage/365)
+        if rand() < distribution_ageofdeath(ageyears, h.gender)
+            h.swap = DEAD  ##swap to natural death
+            h.deadcnt += 1
+            ##newborn(h) 
+        end
+        
     end         
 end
 

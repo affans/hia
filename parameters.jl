@@ -32,12 +32,19 @@ end
     # betathree::Float64 = 0.0426  ## 5-10, 60+
     # betafour::Float64 = 0.0699   ## 10-60
 
-    betaone::Float64 = 0.0773    ## 0-2
-    betatwo::Float64 = 0.0477    ##  2-5
-    betathree::Float64 = 0.0426  ## 5-10, 60+
-    betafour::Float64 = 0.0699   ## 10-60
-
+    betaone::Float64 = 0.0758    ## 0-2
+    betatwo::Float64 = 0.0532    ##  2-5
+    betathree::Float64 = 0.0481  ## 5-10, 60+
+    betafour::Float64 = 0.0799   ## 10-60
     carriagereduction::Float64 = 0.5
+    
+    avgallsexlife = 71     ## average lifetime for both sex
+    avgmalelife = 68*365   ## average lifetime for male
+    avgfemalelife = 74*365 ## average lifetime for female.
+
+    discount_cost::Float64 = 0.03
+    discount_benefit::Float64 = 0.03
+    
     
     ## if invasive, probability of going to meningitis (major, minor, non-disability meningititis , pneumonia, npnm)
     ## data from the american arctic paper - might need some refinement - paper has data based on children/adult. 
@@ -147,8 +154,13 @@ end
     cost_medivac            = 55000
     cost_averagehospital    = 11548  ## average cost of hospital, used if invdeath = true
     
-    
     cost_meningitis_major   = 109664 ## per year major seq cost
+    
+    ## to do: convert these to today's value. these are from rob's paper
+    cost_minor_infant       = 14000  ## 0 - 2
+    cost_minor_preschool    = 10750 ## per year from 2 - 6  
+    cost_minor_school       = 13500 ## this is per year until 18 years of age
+    cost_minor_adult        = 7000  ## from 18-22 
 
 
 end

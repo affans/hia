@@ -76,7 +76,6 @@ end
 
 
 
-
 #  P = HiaParameters(simtime = 100, gridsize = 100000, betaone = 1, betatwo = 1, betathree = 1, betafour = 1)
   #humans = Array{Human}(P.gridsize);
   #initialize(humans, P)

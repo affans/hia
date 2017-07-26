@@ -18,14 +18,7 @@ function statetime(x::Human, P::HiaParameters)
                 end
         :CAR   => r = rand(P.carriagemin:P.carriagemax) ## fixed 50 days for carriage?
         :SYMP  => r = rand(Truncated(Poisson(P.symptomaticmean), P.symptomaticmin, P.symptomaticmax))
-        :INV   =>
-                begin
-                    if x.invdeath
-                        r = rand(Truncated(Poisson(P.hospitalmean_death), P.hospitalmin_death, P.hospitalmax_death))
-                    else 
-                        r = lengthofstay(x, P) 
-                    end
-                end       
+        :INV   => r = lengthofstay(x, P)       
         :REC   => r = rand(P.recoveredmin:P.recoveredmax)
         :DEAD  => r = typemax(Int64)        
         _   => throw("Hia model => statetime passed in non-health enum")
@@ -180,9 +173,14 @@ end
 
 function lengthofstay(x::Human, P::HiaParameters)
     ## this function returns the length of stay in hospital, called by statetime() when the person is invasive
-    ## if x.invdeath == true, then this function will return zero -- but the actual length of stay is determined in statetime()    
     
-    l = 0 ## return value
+    l = 0 ## return value 
+    if x.invdeath
+        l = rand(Truncated(Poisson(P.hospitalmean_death), P.hospitalmin_death, P.hospitalmax_death))
+        return l
+    end  
+    
+    
     if x.age <= 365     ## 1 year
         if x.invtype == PNEU
             l = rand(3:7)
