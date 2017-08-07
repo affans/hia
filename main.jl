@@ -6,9 +6,10 @@ using ParallelDataTransfer
 using DataArrays, DataFrames
 using ProgressMeter
 using PmapProgressMeter
-using JLD
+using JLD2
 #using Gadfly
 #using Profile
+
 
 include("parameters.jl")
 include("datacollection.jl")
@@ -37,9 +38,16 @@ end
 
 
 function sim(simid::Int64, P::HiaParameters, M::ModelParameters, cb)
-    humans = setuphumans(simid, P, M) ## get the humans
-    DC = DataCollection(P.simtime) #set P.vaccinetime = 0 to run without vaccine. 
-    C = CostCollection(P.gridsize, 8)  ## 8 because we have eight health states
+    humans = setuphumans(simid, P, M)    ## get the humans either as new initialization or read from file.
+    
+    ## data collection variables.
+    DC = DataCollection(P.simtime)       
+
+    costs = DataFrame(ID = Int64[], age = Int64[], time = Int64[], health = Int64[], phys = Int64[], hosp = Int64[], med = Int64[], major = Int64[], minor = Int64[])
+
+    dcc = DataFrame(systime = Int64[], ID = Int64[], agegroup = Int64[], health = Int64[], sickfrom = Int64[],  invtype = Int64[], invdeath = Bool[], expectancy = Int64[])
+
+
     vaccineon = M.vaccineon
     ## get the distributions for contact strcuture to pass to dailycontact()
     #println("getting distributions")
@@ -66,22 +74,21 @@ function sim(simid::Int64, P::HiaParameters, M::ModelParameters, cb)
             if vaccineon
                 vcc(humans[i], P)    ## add vaccine specific code. 
             end
-            update(humans[i], P, DC, C, time, humans)          
-            #DC.system[i, time] = Int(humans[i].health)
+            update(humans[i], P, DC, dcc, costs, time, humans)                      
         end
         cb(1)            
     end
-    return humans, DC, C
+
+    ## add simulation id to the data variables as columns
+    dcc[:simid] = simid
+    costs[:simid] = simid
+
+    wait(remotecall(info, 1, "simulation: $simid finished"))
+    return humans, DC, costs, dcc
 end
 
 
 
-#  P = HiaParameters(simtime = 100, gridsize = 100000, betaone = 1, betatwo = 1, betathree = 1, betafour = 1)
-  #humans = Array{Human}(P.gridsize);
-  #initialize(humans, P)
-  #demographics(humans, P)
-#dailycontact(humans[hi], P, humans, ag1, ag2, ag3, ag4, n, f, s, t)
-#find(x -> x.swap != UNDEF, humans)
 
 
 #for i in eachindex(humans)

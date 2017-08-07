@@ -492,3 +492,27 @@ end
 
 end
 
+@testset "Costs" begin
+  P = HiaParameters()
+  M = ModelParameters()
+  M.initializenew = true
+  humans = setuphumans(1, P, M)
+  x = humans[1]
+  
+  ## symptomatic cost, event happened first year
+  @test symptomatic_cost(x, P, 1)   
+  @test symptomatic_cost(x, P, 364)  
+  # symptomatic cost, event happened second year
+  @test symptomatic_cost(x, P, 365) 
+  @test symptomatic_cost(x, P, 729)  
+  
+  # symptomatic cost, event happened 5th year
+  @test symptomatic_cost(x, P, 1460)
+  @test symptomatic_cost(x, P, 1824)
+
+  # test invasive 
+  @test invasive_good(x, P, 1) 
+  @test invasive_major(x, P, 1) 
+  @test invasive_minor(x, P, 1) 
+  println(collectcosts(x, P, 1))
+end

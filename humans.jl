@@ -1,5 +1,5 @@
 # sets up the humans
-type Human{T <: Integer}
+mutable struct Human{T <: Integer}
     ## disease parameters (modified in make() function)
     id::T                 ## ID of the human
     health::HEALTH     ## current health status
@@ -17,7 +17,7 @@ type Human{T <: Integer}
     timeinstate::T        ## days spent in current health status   
     statetime::T          ## maximum amount of days spent in health status 
     age::T                ## age in days  - 365 days per year
-    agedeath::T           ## age of death - in days.
+    expectancy::T         ## life expectancy - however death is checked every year against a distribution
     agegroup_beta::T      ## - NOT the jackson contact matrix group.
     gender::GENDER        ## gender - 50% male/female
     meetcnt::T            ## total meet count. how many times this person has met someone else.    
@@ -40,11 +40,11 @@ type Human{T <: Integer}
            symcnt = 0,
            invcnt = 0, deadcnt = 0, sickfrom = 0,
            timeinstate = 0, statetime = typemax(Int64), 
-           age = 0, agedeath=0, agegroup_beta = 0, gender = MALE,
+           age = 0, expectancy=0, agegroup_beta = 0, gender = MALE,
            meetcnt = 0, 
            pvaccine = false, bvaccine = false,
            dosesgiven = 0, 
-           vaccineexpirytime = 0) = new(id, health, swap, path, invtype, invdeath, plvl, latcnt, carcnt, symcnt, invcnt, deadcnt, sickfrom, timeinstate, statetime, age, agedeath, agegroup_beta, gender, meetcnt, pvaccine, bvaccine, dosesgiven, vaccineexpirytime) 
+           vaccineexpirytime = 0) = new(id, health, swap, path, invtype, invdeath, plvl, latcnt, carcnt, symcnt, invcnt, deadcnt, sickfrom, timeinstate, statetime, age, expectancy, agegroup_beta, gender, meetcnt, pvaccine, bvaccine, dosesgiven, vaccineexpirytime) 
 end
 
 function initialize(h::Array{Human{Int64}},P::HiaParameters)
@@ -64,7 +64,8 @@ function demographics(h::Array{Human{Int64}}, P::HiaParameters)
         x.age =  min(rand(ageyear*365:ageyear*365 + 365), 85*365)   ## convert to days // capped at 85 years old.. 
         x.agegroup_beta = beta_agegroup(x.age)
         ddist = distribution_death(x.age)
-        x.agedeath = x.age + rand(ddist)*365 ## convert to days
+        ## everyone has an expectancy
+        x.expectancy = x.age + rand(ddist)*365 ## convert to days
         x.gender = rand() < 0.5 ? FEMALE : MALE
         x.plvl = protection(x)
     end
@@ -88,7 +89,7 @@ function newborn(h::Human)
     h.timeinstate = 0
     h.statetime = typemax(Int64) 
     h.age = 0
-    h.agedeath = rand(distribution_death(0))*365 ## convert to days
+    h.expectancy = rand(distribution_death(0))*365 ## convert to days
     h.agegroup_beta = beta_agegroup(0)
     h.gender = rand() < 0.5 ? FEMALE : MALE
     h.meetcnt = 0
@@ -228,6 +229,10 @@ function swap(h::Human, P::HiaParameters)
     ## swapping to inv
     if h.swap == INV                      
         ## they are swapping to INV.. check if they will die using case fatality ratio
+        ## couple of things must happen: x.invdeath && x.invtype must be set accordingly.
+        ## if invdeath == T, then invtype == NOINV (since this is the default value)
+        ## if invdeath == F, then invtype == Integer 1 - 4 (since this is the default value)
+        
         h.invdeath = rand() < P.casefatalityratio ? true : false
         if h.invdeath == false 
             ## not dying, check what kind of invasive they will be. 
@@ -270,17 +275,27 @@ function swap(h::Human, P::HiaParameters)
     return nothing
 end
 
-function update(x::Human, P::HiaParameters, DC::DataCollection, C::CostCollection, time, humans::Array{Human{Int64}})
+function update(x::Human, P::HiaParameters, DC::DataCollection, dcc, costs, system_time, humans::Array{Human{Int64}})
     if x.swap != UNDEF
-        ## run swap function, this dosn't reset the swap - do it manually. 
+        ## run swap function, remember to set x.swap == UNDEF again after running this.
         swap(x, P)
 
         ## run daily data collection
-        collectdaily(x, DC, time)
+        collectdaily(x, DC, system_time)
 
-        ## run daily cost function, if the person is switching 
-        #dailycosts(x, P, C)
+        ## v2 data collection - used for DALY also
+        ttmp = [system_time, x.id, x.agegroup_beta, Int(x.health), x.sickfrom,
+                    x.invtype, x.invdeath, x.expectancy]
+        push!(dcc, ttmp)
 
+        ## run daily cost function, if the person is switching to symp or inv only
+        if x.health == SYMP || x.health == INV
+            tmp = collect(collectcosts(x, P, system_time))
+            ## append additional information.
+            ttmp = vcat([x.id, x.age, system_time, Int(x.health)], tmp)
+            push!(costs, ttmp )    
+        end
+        
         ## run waifu
         #waifumatrix(x, DC, humans)
 

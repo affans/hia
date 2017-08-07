@@ -1,6 +1,5 @@
 ## main system enums
 
-## if changing HEALTH ENUM, remember to change the costcollection construction in main()...
 @enum HEALTH SUSC=1 LAT=2 CAR=3 SYMP=4 INV=5 REC=6 DEAD=7 UNDEF=8
 @enum GENDER MALE=1 FEMALE=2
 @enum INVSEQ COGMAJ=1 SEIZMAJ=2 HEARLOSSMAJ=3 MOTORMAJ=4 VISUALMAJ=5 IMPAIRMAJ=6 MIMPAIRMAJ=7 COGMIN=8 SEIZMIN=9 HEARLOSSMIN=10 MOTORMIN=11 VISUALMIN=12 IMPAIRMIN=13 MIMPAIRMIN=14 MENNOSEQ=15 PNEU=16 NPNM=17 NOINV=18
@@ -13,6 +12,8 @@
     numofsims::Int64 = 50           ## how much sims to run
     numofprocessors::Int64 = 50     ## number of processors to use    
     savejld::Bool = true            ## whether we should save files at the end of simulation. 
+    savecosts::Bool = true
+    saveDC::Bool = true
     readloc::String  = "./serial/"    #serialfolder in the form of "{dir}/"
     writeloc::String = "./serial/"   #serialfolder in the form of "{dir}/"
     vaccineon::Bool = true
@@ -22,7 +23,7 @@ end
 @with_kw type HiaParameters @deftype Int64
     # general parameters
     simtime = 365         ## time of simulation 40 years in days
-    gridsize = 100000     ## size of population 
+    gridsize = 100000      ## size of population 
     inital_latent = 1     ## initial prevalence    
     vaccinetime = 0       ## years (in days) added on top of simtime
     
@@ -32,10 +33,11 @@ end
     # betathree::Float64 = 0.0426  ## 5-10, 60+
     # betafour::Float64 = 0.0699   ## 10-60
 
-    betaone::Float64 = 0.0758    ## 0-2
-    betatwo::Float64 = 0.0532    ##  2-5
-    betathree::Float64 = 0.0481  ## 5-10, 60+
+    betaone::Float64 = 0.0792    ## 0-2
+    betatwo::Float64 = 0.0546    ##  2-5
+    betathree::Float64 = 0.0491  ## 5-10, 60+
     betafour::Float64 = 0.0799   ## 10-60
+    
     carriagereduction::Float64 = 0.5
     
     avgallsexlife = 71     ## average lifetime for both sex
@@ -157,19 +159,15 @@ end
     cost_meningitis_major   = 109664 ## per year major seq cost
     
     ## to do: convert these to today's value. these are from rob's paper
-    cost_minor_infant       = 14000  ## 0 - 2
-    cost_minor_preschool    = 10750 ## per year from 2 - 6  
-    cost_minor_school       = 13500 ## this is per year until 18 years of age
-    cost_minor_adult        = 7000  ## from 18-22 
+    cost_minor_infant       = 27914 ## 14000  ## 0 - 2
+    cost_minor_preschool    = 21434 ## 85737 total.. per year from 2 - 6  
+    cost_minor_school       = 26917 ## this is per year until 18 years of age
+    cost_minor_adult        = 13957  ## from 18-22 
 
-
+    cost_vaccine_dose       = 20
+    cost_administration     = 8
+    cost_wastage            = 0 ## 3 - 5% -- added on top of the vaccine coverage, only affects cost
+    
 end
 
-
-## cost collection type structure
-type CostCollection
-    costmatrix::Matrix{Int64}  ## number of people x categories
-    CostCollection(size::Int64) = new(zeros(Int64, size, size))
-    CostCollection(rows::Int64, cols::Int64) = new(zeros(Int64, rows, cols))    
-end
 

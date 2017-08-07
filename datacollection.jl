@@ -11,9 +11,6 @@ type DataCollection  ## data collection type.
     invM::Array{Int64}      # invasive, meningitis
     invP::Array{Int64}      # invasive, pneumonia
     invN::Array{Int64}      # invasive, NPNM
-    waifu::Array{Int64}
-
-
 
     ## size x 5 matrix.. 5 because we have five "beta" agegroups, and size = simulation time
     DataCollection(size::Integer) = new(zeros(Int64, size, 5),    #lat 
@@ -25,19 +22,10 @@ type DataCollection  ## data collection type.
                                     zeros(Int64, size, 5),        #deadi
                                     zeros(Int64, size, 5),        #invM
                                     zeros(Int64, size, 5),        #invP
-                                    zeros(Int64, size, 5),        #invN
-                                    zeros(Int64, 5, 5))          ## waifu, 5x5 matrix (5 agegroups)                                       
+                                    zeros(Int64, size, 5))        #invN                                    
 end
 
-function waifumatrix(x, DC::DataCollection, h::Array)
-    ### DC.waifu is a 5x5 matrix representing the five beta agegroups
-    ## if the person had a successful pathogen transfer
-    if x.swap == LAT 
-        s = x.agegroup_beta
-        f = h[x.sickfrom].agegroup_beta
-        DC.waifu[s, f] = DC.waifu[s, f]  + 1
-    end
-end
+
 
 function collectdaily(x, DC::DataCollection, time)
     ## x is human type, but cant declare it yet because include("humans.jl") runs after, so the Human type isnt defined yet.
@@ -74,40 +62,22 @@ function readjld(prefix, numofsims, key)
   return a;
 end 
 
-function getgroupsizes(res, numofsims)
-    ag1 = 0
-    ag2 = 0
-    ag3 = 0
-    ag4 = 0
-    ag5 = 0
-    for i = 1:numofsims
-        s = res[i]
-        ag1 += length(find(x -> x.agegroup_beta == 1, s))
-        ag2 += length(find(x -> x.agegroup_beta == 2, s))
-        ag3 += length(find(x -> x.agegroup_beta == 3, s))
-        ag4 += length(find(x -> x.agegroup_beta == 4, s))
-        ag5 += length(find(x -> x.agegroup_beta == 5, s))
-    end
+function getgroupsizes(humans)
+    ag1 = length(find(x -> x.agegroup_beta == 1, humans))
+    ag2 = length(find(x -> x.agegroup_beta == 2, humans))
+    ag3 = length(find(x -> x.agegroup_beta == 3, humans))
+    ag4 = length(find(x -> x.agegroup_beta == 4, humans))
+    ag5 = length(find(x -> x.agegroup_beta == 5, humans))    
     return ag1, ag2, ag3, ag4, ag5
 end
 
-function processresults(results, foldername)
+function processresults(results)
     ## This function accepts an array of DataCollection types - ie, Array{DataCollection}. Each element in this array corresponds to a datacollection object for each simulation. 
     ## Returns: Creates 5 folders for each agegroup, and for each folder, the datafiles for each disease class is created. 
     ## For example, in latent.dat the rows correspond to the number of days in the simulation, and the columns represents the simulations. 
     
-    ## incoming folder name must be "seed" "vaccine" or "pastthirty"
-    if foldername != "seed" && foldername != "vaccine" && foldername != "pastthirty"
-        throw("foldername must be either: seed, vaccine, pastthirty")
-    end
-    fn = string(foldername, "_", Dates.monthname(Dates.today()), Dates.day(Dates.today()))
-    if !isdir(fn) 
-        info("creating results folder: $fn")
-    end
-    
-
     numofsims = length(results)         ## this gives the number of simulations
-    numofdays = size(results[1].lat, 1) ## this gives the number of days (we pick the latent counter from the first simulation to get this.. )
+    numofdays = size(results[1].lat, 1) ## this gives the number of days (pick any matrix from the first simulation to get this.. )
 
     info("processing results")
     for agegroup = 1:5  ## go through each age group. 
@@ -160,7 +130,7 @@ function processresults(results, foldername)
 
       ## data files created, running plot script
       println("...data files created, running Rscript")
-      run(`Rscript plots.R $dirname`)
+      #run(`Rscript plots.R $dirname`)
     
     end
 

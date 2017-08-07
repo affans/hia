@@ -41,8 +41,38 @@ funch(h::UpdatedHuman) = h.a + 1
 
 
 using DataArrays, DataFrames
-costs = DataFrame(ID = Int64[], ageofonset = Int64[], yearofonset = Int64[], typeofdisease = Int64[],physiciancost = Int64[], hospitalcost = Int64[], medivaccost = Int64[], seqmajor = Int64[], seqminor = Int64[], seqmajor = Int64[] )
+costs1 = DataFrame(simid = Int64[], ID = Int64[], ageofonset = Int64[], yearofonset = Int64[], typeofdisease = Int64[],physiciancost = Int64[], hospitalcost = Int64[], medivaccost = Int64[], seqmajor = Int64[], seqminor = Int64[], seqmajor = Int64[] )
 
-push!(costs, [1, 2, 3, 4, 5, 6, 7, 8, 9])
+for i = 1:1000
+push!(costs1, vcat([11,1, 1, 1, 1], [1, 1, 1, 1, 1]))
+end
+
+push!(costs1, [11, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+costs2 = DataFrame(simid = Int64[], ID = Int64[], ageofonset = Int64[], yearofonset = Int64[], typeofdisease = Int64[],physiciancost = Int64[], hospitalcost = Int64[], medivaccost = Int64[], seqmajor = Int64[], seqminor = Int64[], seqmajor = Int64[] )
+
+for i = 1:1000
+    push!(costs2, vcat([12,1, 1, 1, 1], [1, 1, 1, 1, 1]))
+end
+
+push!(costs2, [12, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+a = [costs1, costs2] ## array --- results from our pmap
+[vcat(a[i]) for i =1:2]
+vcat(a) ## v-concatenates them all. 
 
 costs[findin(costs[:ID], 3), :]
+
+
+function A()
+    newarray = zeros(Int64, 200)
+    r = B(newarray)
+    return r
+end
+
+function B(i)
+    i[1] = 2
+    return i
+end
+
+

@@ -6,8 +6,19 @@ using ParallelDataTransfer
 using DataArrays, DataFrames
 using ProgressMeter
 using PmapProgressMeter
-using JLD
+using JLD2
 using Lumberjack
+
+# Pkg.add("Parameters")
+# Pkg.add("Match")
+# Pkg.add("Distributions")
+# Pkg.add("StatsBase")
+# Pkg.add("DataFrames") ## adds DataArrays
+# Pkg.add("ProgressMeter")
+# Pkg.add("ParallelDataTransfer")
+# Pkg.add("Lumberjack")
+# Pkg.clone("https://github.com/simonster/JLD2.jl")
+# Pkg.clone("https://github.com/slundberg/PmapProgressMeter.jl")
 
 add_truck(LumberjackTruck("processrun.log"), "my-file-logger")
 remove_truck("console")
@@ -19,39 +30,67 @@ info("starting @everywhere include process...")
 addprocs(60)
 @everywhere include("main.jl")
 
+function filestructure(P::HiaParameters, M::ModelParameters)  
+  if !isdir(M.writeloc) 
+      info("...not found: attemping to make directory $(M.writeloc)")
+      try
+        mkdir(M.writeloc)
+        info("done")
+      catch
+        info("count not create jld save directory")
+      end
+  end
+end
 
 function seed()
   info(now())
+  simhash = string(hash(time()))
   info("starting seed...")
   info("total number of processors setup: $(nprocs())") 
   info("setting up Hia and Model parameters...")
-  @everywhere P = HiaParameters(simtime = 10*365, vaccinetime = 10*365)
-  @everywhere M = ModelParameters(numofsims = 50, vaccineon=false)  ## start with vaccine off
+  @everywhere P = HiaParameters(simtime = 30*365, vaccinetime = 10*365)
+  @everywhere M = ModelParameters(numofsims = 500, vaccineon=false, savejld = false)  ## start with vaccine off
+  filestructure(P, M)
   info("\n $P"); info("\n $M");
   info("starting seed pmap...")
+  rs = pmap((cb, x) -> sim(x, P, M, cb), Progress(M.numofsims*P.simtime), 1:(M.numofsims), passcallback=true)
+  info("pmap finished!")
 
-  resultsseed = pmap((cb, x) -> sim(x, P, M, cb), Progress(M.numofsims*P.simtime), 1:(M.numofsims), passcallback=true)   
+  ## rs[i][1] contains the "human" array
+  ## rs[i][2] containts the datacollection matrices 
+  ## rs[i][3] contains the costs dataframe
+  ## rs[i][4] contains version2 of datacollection -- change this if removing the old one.
 
-  info("seed finished!")
-  if M.savejld 
-    info("M.savejld is true, checking if $(M.writeloc) exists")
-    if !isdir(M.writeloc) 
-        info("...not found: attemping to make directory $(M.writeloc)")
-        try
-          mkdir(M.writeloc)
-        catch
-          info("count not create jld save directory")
-          error("could not create jld save directory")
-        end
-    end
-    info("writing files...")
-    for i=1:length(resultsseed)
+  if M.savejld    
+    info("writing JLD files...")
+    for i=1:M.numofsims
       hf = string(M.writeloc, "seed$i.jld")    
-      save(hf, "humans", resultsseed[i][1], "DC", resultsseed[i][2], "costs", resultsseed[i][3])    
+      @save hf rs[i][1]
     end    
   end
-  #agsize = getgroupsizes(resultsseed)
-  return resultsseed
+
+  if M.saveDC
+    ## create an array of only datacollection variables - pass off to processresults()
+    try
+      info("Processing DC...")
+      dc = [rs[i][2] for i = 1:M.numofsims]    
+      processresults(dc)
+    catch
+      info("process results didnt work")
+    end
+    
+    dcc = [rs[i][4] for i = 1:M.numofsims]     
+    writetable("dcc.dat", vcat(dcc))
+
+  end
+
+  if M.savecosts  
+    info("Processing Costs...")    
+    costs = [rs[i][3] for i = 1:M.numofsims]
+    writetable("costs.dat", vcat(costs))           
+  end
+
+  return rs
 end
 
 
@@ -93,7 +132,9 @@ function pastthirty()
   info("all simulation scenarios finished!")
   return resultsseed, resultsone, resultstwo
 end
-seed()
+r = seed()
+
+
 # P = HiaParameters(simtime = 30*365, vaccinetime = 10*365, betaone = 0.5, betatwo = 0.5, betathree=0.5, betafour = 0.5)
 #main(50)
 #process(500, "./serial/hser")

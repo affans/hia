@@ -167,7 +167,7 @@ function transmission(susc::Human, sick::Human, P::HiaParameters)
     trans = (sick.health == CAR) ? beta*P.carriagereduction*(1 - susc.plvl) : beta*(1 - susc.plvl)
     if rand() < trans   ## succesfull transfer of pathogen.      
         susc.swap = LAT
-        susc.sickfrom = sick.id
+        susc.sickfrom = sick.agegroup_beta ## we only care about which agegroup made this person sick
     end
 end
 
