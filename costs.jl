@@ -46,10 +46,9 @@ function invasive_major(x::Human, P::HiaParameters, st)
     
     ## disability major is a yearly cost until death.. use their expectancy to figure this out
     agediff = Int(floor((x.expectancy - x.age)/365))     ## in terms of years.
-    ## the cost of major sequlae is 109664/year..
-    fvm = [P.cost_meningitis_major^i for i=1:agediff]
-    totalseqmaj = sum(fvm)
-
+    ## the cost of major sequlae is 109664/year..    
+    totalseqmaj = sum([P.cost_meningitis_major/(1+P.discount_cost)^i for i=1:agediff])
+    
     ## medivac
     if x.agegroup_beta == 1         
         totalmed = P.cost_medivac        

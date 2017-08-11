@@ -41,11 +41,11 @@ function sim(simid::Int64, P::HiaParameters, M::ModelParameters, cb)
     humans = setuphumans(simid, P, M)    ## get the humans either as new initialization or read from file.
     
     ## data collection variables.
-    DC = DataCollection(P.simtime)       
+    #DC = DataCollection(P.simtime)       
 
-    costs = DataFrame(ID = Int64[], age = Int64[], time = Int64[], health = Int64[], phys = Int64[], hosp = Int64[], med = Int64[], major = Int64[], minor = Int64[])
+    costs = DataFrame(ID = Int64[], age = Int64[], systime = Int64[], health = Int64[], phys = Int64[], hosp = Int64[], med = Int64[], major = Int64[], minor = Int64[])
 
-    dcc = DataFrame(systime = Int64[], ID = Int64[], agegroup = Int64[], health = Int64[], sickfrom = Int64[],  invtype = Int64[], invdeath = Bool[], expectancy = Int64[])
+    dcc = DataFrame(systime = Int64[], ID = Int64[], age = Int64[], agegroup = Int64[], health = Int64[], sickfrom = Int64[],  invtype = Int64[], invdeath = Bool[], expectancy = Int64[])
 
 
     vaccineon = M.vaccineon
@@ -68,13 +68,35 @@ function sim(simid::Int64, P::HiaParameters, M::ModelParameters, cb)
         s = filter(x -> x.age >= 1460 && x.age < 3285, humans)    
         t = filter(x -> x.age >= 3285, humans)
         @inbounds for i in eachindex(humans)
+            ## run daily human functions - these can set a swap
             dailycontact(humans[i], P, ag1, ag2, ag3, ag4, n, f, s, t)
             tpp(humans[i], P)
             app(humans[i], P)
+            
+            ## run vaccine functions if applicable
             if vaccineon
                 vcc(humans[i], P)    ## add vaccine specific code. 
             end
-            update(humans[i], P, DC, dcc, costs, time, humans)                      
+            
+            ## if the swap got set from above functions -- update dataframes
+            if humans[i].swap != UNDEF                
+                swap(x, P)                  
+                        
+                ## collect costs in dataframe, if the person is switching to symp or inv only
+                if x.health == SYMP || x.health == INV
+                    tmp = collect(collectcosts(x, P, system_time))                    
+                    ttmp = vcat([x.id, x.age, system_time, Int(x.health)], tmp) ## append additional system information.
+                    push!(costs, ttmp )    
+                end
+                
+                ## collect incidence data in dataframe 
+                if x.health != SUSC  ## dont add in data collection if the person has become susceptible again.
+                    ## we potentially remove million of rows by not having this transition recorded.
+                    ttmp = [system_time, x.id, x.age, x.agegroup_beta, Int(x.health), x.sickfrom,
+                            x.invtype, x.invdeath, x.expectancy]
+                    push!(dcc, ttmp)
+                end                    
+            end
         end
         cb(1)            
     end
@@ -84,41 +106,8 @@ function sim(simid::Int64, P::HiaParameters, M::ModelParameters, cb)
     costs[:simid] = simid
 
     wait(remotecall(info, 1, "simulation: $simid finished"))
-    return humans, DC, costs, dcc
+    #return humans, DC, costs, dcc
+    return humans, costs, dcc
+    
 end
 
-
-
-
-
-#for i in eachindex(humans)
-#   dailycontact(humans[i], P, humans, ag1, ag2, ag3, ag4, n, f, s, t)
-#    tpp(humans[i], P)
-#    app(humans[i], P)
-#    @time update(humans[i], P, DC, time)                
-    #println(i)
-#end
-
-#find(x -> x.health != SUSC, humans)
-#track(humans[hi])
-#   humans[1].health = INV
-#   humans[1].invdeath = true
-
-#   a = [statetime(humans[1], P) for i = 1:100000]
-  
-# a = map(x -> x.meetcnt, h)
-
- 
-# cuminv = cumsum(latavg/2)
-
-
-# gg = map(x -> x.age, h)
-# gg2 = map(x -> x.age, humans)
-# plot(x=gg2, Geom.histogram)
-# plot(x=1:365*10, y=symavg/2)
-
-# symavg1 = symavg/2
-# plot(x=365*3:365*7, y=symavg1[365*3:365*7])
-
-
-#@time find(x -> x.age > 365, humans)

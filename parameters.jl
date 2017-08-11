@@ -12,8 +12,6 @@
     numofsims::Int64 = 50           ## how much sims to run
     numofprocessors::Int64 = 50     ## number of processors to use    
     savejld::Bool = true            ## whether we should save files at the end of simulation. 
-    savecosts::Bool = true
-    saveDC::Bool = true
     readloc::String  = "./serial/"    #serialfolder in the form of "{dir}/"
     writeloc::String = "./serial/"   #serialfolder in the form of "{dir}/"
     vaccineon::Bool = true

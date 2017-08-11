@@ -57,9 +57,10 @@ function seed()
   info("pmap finished!")
 
   ## rs[i][1] contains the "human" array
-  ## rs[i][2] containts the datacollection matrices 
-  ## rs[i][3] contains the costs dataframe
-  ## rs[i][4] contains version2 of datacollection -- change this if removing the old one.
+  ## rs[i][2] contains the costs dataframe
+  ## rs[i][3] contains version2 of datacollection -- change this if removing the old one.
+
+  ## august 10 update: removed the DC part of it - recover that if needed
 
   if M.savejld    
     info("writing JLD files...")
@@ -69,27 +70,12 @@ function seed()
     end    
   end
 
-  if M.saveDC
-    ## create an array of only datacollection variables - pass off to processresults()
-    try
-      info("Processing DC...")
-      dc = [rs[i][2] for i = 1:M.numofsims]    
-      processresults(dc)
-    catch
-      info("process results didnt work")
-    end
-    
-    dcc = [rs[i][4] for i = 1:M.numofsims]     
-    writetable("dcc.dat", vcat(dcc))
+  info("Processing Costs...")    
+  costs = [rs[i][2] for i = 1:M.numofsims]
+  writetable("costs.dat", vcat(costs))           
 
-  end
-
-  if M.savecosts  
-    info("Processing Costs...")    
-    costs = [rs[i][3] for i = 1:M.numofsims]
-    writetable("costs.dat", vcat(costs))           
-  end
-
+  dcc = [rs[i][3] for i = 1:M.numofsims]     
+  writetable("dcc.dat", vcat(dcc))
   return rs
 end
 

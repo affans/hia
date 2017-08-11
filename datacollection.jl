@@ -126,23 +126,8 @@ function processresults(results)
       writedlm(string(dirname, "/deadinvasive.dat"), di)
       writedlm(string(dirname, "/invasive_men.dat"), mm)
       writedlm(string(dirname, "/invasive_pneu.dat"), pn)
-      writedlm(string(dirname, "/invasive_npnm.dat"), np)
-
-      ## data files created, running plot script
-      println("...data files created, running Rscript")
-      #run(`Rscript plots.R $dirname`)
-    
+      writedlm(string(dirname, "/invasive_npnm.dat"), np)     
     end
 
 end
 
-function process_waifu(results)
-    ## results: should be an array of DC elements. 
-    avgwaifu = zeros(Int64, 5, 5)
-    for i=1:length(results)
-        avgwaifu = avgwaifu + results[i].waifu
-    end
-    write("WAIFU.dat", avgwaifu)
-    return avgwaifu
-
-end

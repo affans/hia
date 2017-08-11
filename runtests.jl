@@ -2,9 +2,9 @@
 
 # if invasive compartment, then check invtype is set properly. 
 
+include("main.jl")
+
 using Base.Test
-
-
 
 @testset "State Times" begin 
   ## to do: statetime for invasive - death and no death scenarios. 
@@ -373,8 +373,10 @@ end
   @test h.invdeath == true
   @test h.invtype == NOINV
   ## since invdeath is ON.. this should check if swap has been dead
-  h.timeinstate = h.statetime; tpp(h, P); swap(h, P); h.swap = UNDEF 
-  @test h.health == DEAD;
+  h.timeinstate = h.statetime; tpp(h, P); 
+  @test h.swap == DEAD
+  swap(h, P); h.swap = UNDEF 
+  @test h.health == SUSC; ## swap function should reset to a "newborn"
   
   
 
@@ -488,31 +490,31 @@ end
   @test h.meetcnt == 1
   sickid = find(x -> x.swap == LAT, humans)
   @test length(sickid) == 1 ## only one person should've gotten sick
-  @test humans[sickid[1]].sickfrom == h.id
+  @test humans[sickid[1]].sickfrom == h.agegroup_beta
 
 end
 
-@testset "Costs" begin
-  P = HiaParameters()
-  M = ModelParameters()
-  M.initializenew = true
-  humans = setuphumans(1, P, M)
-  x = humans[1]
+# @testset "Costs" begin
+#   P = HiaParameters()
+#   M = ModelParameters()
+#   M.initializenew = true
+#   humans = setuphumans(1, P, M)
+#   x = humans[1]
   
-  ## symptomatic cost, event happened first year
-  @test symptomatic_cost(x, P, 1)   
-  @test symptomatic_cost(x, P, 364)  
-  # symptomatic cost, event happened second year
-  @test symptomatic_cost(x, P, 365) 
-  @test symptomatic_cost(x, P, 729)  
+#   ## symptomatic cost, event happened first year
+#   @test symptomatic_cost(x, P, 1)   
+#   @test symptomatic_cost(x, P, 364)  
+#   # symptomatic cost, event happened second year
+#   @test symptomatic_cost(x, P, 365) 
+#   @test symptomatic_cost(x, P, 729)  
   
-  # symptomatic cost, event happened 5th year
-  @test symptomatic_cost(x, P, 1460)
-  @test symptomatic_cost(x, P, 1824)
+#   # symptomatic cost, event happened 5th year
+#   @test symptomatic_cost(x, P, 1460)
+#   @test symptomatic_cost(x, P, 1824)
 
-  # test invasive 
-  @test invasive_good(x, P, 1) 
-  @test invasive_major(x, P, 1) 
-  @test invasive_minor(x, P, 1) 
-  println(collectcosts(x, P, 1))
-end
+#   # test invasive 
+#   @test invasive_good(x, P, 1) 
+#   @test invasive_major(x, P, 1) 
+#   @test invasive_minor(x, P, 1) 
+#   println(collectcosts(x, P, 1))
+# end

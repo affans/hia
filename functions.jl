@@ -307,9 +307,6 @@ end
 
 function beta_agegroup(age::Integer)
     ## returns one of the beta values from the parameter list
-
-    ## If: Changing the number (or even values of the age group), check datacollection vectors.
-    ## for example in human.jl, update(), DC vectors are updated by latent[dayofsim, AGEGROUP] +=1 
     @match age begin
         0:364         => 1     # 0 - 1
         365:1824      => 2     # 2 - 5 

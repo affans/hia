@@ -209,20 +209,14 @@ end
 
 
 
-function swap(h::Human, P::HiaParameters)
-    ## this function moves the human to a new compartment. 
-    ## NOTE: IT dosnt SET the SWAP BACK TO NODEF.. do it manually 
-    ##  OR CALL THE update() function.
-    ## if moving to LATENT, calculate their path, and reset their invasive. 
-    ## do not reset their invasive if NOT moving to latent.. this is because 
-    ## invasive is set when moving to SYMP, so either set invasive = false when 
-    ## they recover, OR (current solution) invasive = false when going to latent
-    ## this function also updates their personal counters.
+function swap(h::Human, P::HiaParameters)    
+    ## only run the function if swap is set. 
+    if h.swap == UNDEF         
+        return nothing
+    end
 
-    ## ** see comment below on setting the variables (especially path) in correct order
-    ## context specific checks 
-    if h.swap == UNDEF  
-        ## only run the function if swap is set. 
+    if h.swap == DEAD
+        newborn(h)
         return nothing
     end
 
@@ -271,40 +265,46 @@ function swap(h::Human, P::HiaParameters)
         h.symcnt += 1
     elseif h.health == INV
         h.invcnt += 1    
-    end
+    end      
+    ## reset the swap back to undefined
+    h.swap = UNDEF
     return nothing
 end
 
-function update(x::Human, P::HiaParameters, DC::DataCollection, dcc, costs, system_time, humans::Array{Human{Int64}})
-    if x.swap != UNDEF
-        ## run swap function, remember to set x.swap == UNDEF again after running this.
-        swap(x, P)
+# function update(x::Human, P::HiaParameters, M::ModelParameters)
+#     if x.swap != UNDEF
+#         ## run swap function, remember to set x.swap == UNDEF again after running this.
+#         ## this switches 
+#         swap(x, P)  
 
-        ## run daily data collection
-        collectdaily(x, DC, system_time)
+#         ## run daily data collection
+#         collectdaily(x, DC, system_time)
 
-        ## v2 data collection - used for DALY also
-        ttmp = [system_time, x.id, x.agegroup_beta, Int(x.health), x.sickfrom,
-                    x.invtype, x.invdeath, x.expectancy]
-        push!(dcc, ttmp)
+#         ## v2 data collection - used for DALY also
+#         if x.health == SUSC  ## dont add in data collection if the person has become susceptible again.
+#             ## we potentially remove million of rows by not having this transition recoreded.
+#             ttmp = [system_time, x.id, x.age, x.agegroup_beta, Int(x.health), x.sickfrom,
+#                       x.invtype, x.invdeath, x.expectancy]
+#             push!(dcc, ttmp)
+#         end
 
-        ## run daily cost function, if the person is switching to symp or inv only
-        if x.health == SYMP || x.health == INV
-            tmp = collect(collectcosts(x, P, system_time))
-            ## append additional information.
-            ttmp = vcat([x.id, x.age, system_time, Int(x.health)], tmp)
-            push!(costs, ttmp )    
-        end
+#         ## run daily cost function, if the person is switching to symp or inv only
+#         if x.health == SYMP || x.health == INV
+#             tmp = collect(collectcosts(x, P, system_time))
+#             ## append additional information.
+#             ttmp = vcat([x.id, x.age, system_time, Int(x.health)], tmp)
+#             push!(costs, ttmp )    
+#         end
         
-        ## run waifu
-        #waifumatrix(x, DC, humans)
+#         ## run waifu
+#         #waifumatrix(x, DC, humans)
 
-        ## if the swap is dead.. replace them. 
-        if x.swap == DEAD
-            newborn(x)  ## make the person a newborn        
-        else ## reset their swap.             
-            x.swap = UNDEF
-        end
-    end
-end
+#         ## if the swap is dead.. replace them. 
+#         if x.swap == DEAD
+#             newborn(x)  ## make the person a newborn        
+#         else ## reset their swap.             
+#             x.swap = UNDEF
+#         end
+#     end
+# end
 
