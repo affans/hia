@@ -1,9 +1,3 @@
-function todo()
-    warn("Hia model => in groupcounts - processed multiple times in processresults()")  
-    warn("Hia model => if infected, see if sickfrom ID is valid. ")  
-    warn("Hia model => m = zeros(Int64, numofsims, 8)  -- dont hard code the 8 in costs processing" ) 
-end
-
 function statetime(x::Human, P::HiaParameters)
     ## this returns the statetime for everystate..
     ## it uses their CURRENT HEALTH.. 
@@ -317,11 +311,10 @@ function beta_agegroup(age::Integer)
     end
 end
 
-function insertrandom(h::Array{Human{Int64}}, P::HiaParameters, s::HEALTH)
+function insertrandom(h::Array{Human{Int64}}, P::HiaParameters)
     i = rand(1:P.gridsize) ## select a random human
     # set the swap and run the update function manually
-    h[i].swap = s
-    swap(h[i], P)
-    h[i].swap = UNDEF
+    h[i].swap = LAT
+    swap(h[i], P)  
     return i
 end

@@ -5,6 +5,8 @@ library(ggplot2)
 library(reshape2)
 library(ggthemes)
 
+#install.packages(c("data.table", "ggplot2", "reshape2", "ggthemes"))
+
 args = commandArgs(trailingOnly=TRUE)
 
 # Multiple plot function
@@ -79,12 +81,19 @@ symptomatic = fread(paste(folder, "/symptomatic.dat", sep=""))
 invasive = fread(paste(folder, "/invasive.dat", sep=""))
 recovered = fread(paste(folder, "/recovered.dat", sep=""))
 deadinv = fread(paste(folder, "/deadinvasive.dat", sep=""))
+invasivemen = fread(paste(folder, "/invasive_men.dat", sep=""))
+invasivepneu = fread(paste(folder, "/invasive_pneu.dat", sep="")) 
+invasivenpnm = fread(paste(folder, "/invasive_npnm.dat", sep=""))
+
+
 
 
 t = nrow(latent)
 sims = ncol(latent)
 dt = data.table(lat = numeric(t), car = numeric(t), sym = numeric(t), 
-                inv = numeric(t), rec = numeric(t), dinv = numeric(t), dnat = numeric(t))
+                inv = numeric(t), rec = numeric(t), dinv = numeric(t), dnat = numeric(t),
+                invm = numeric(t), invp = numeric(t), invn = numeric(t))
+
 
 
 dt$lat = rowMeans(latent)
@@ -93,6 +102,10 @@ dt$sym = rowMeans(symptomatic)
 dt$inv = rowMeans(invasive)
 dt$rec = rowMeans(recovered)
 dt$dinv = rowMeans(deadinv)
+dt$invm = rowMeans(invasivemen)
+dt$invp = rowMeans(invasivepneu)
+dt$invn = rowMeans(invasivenpnm)
+
 
 ## Open PDF device
 pdf(paste(folder, "_plots.pdf", sep=""), width=8.5, height=11, paper="USr")
@@ -101,6 +114,27 @@ pdf(paste(folder, "_plots.pdf", sep=""), width=8.5, height=11, paper="USr")
 plabel = "Yearly invasive - average"
 seqs <- seq_along(dt$inv)
 avgcalc = tapply(dt$inv,rep(seqs,each=365)[seqs],FUN=sum) ## sum every 365 days
+gg = makeplot(plabel, seqs, avgcalc)
+gg
+
+## average annual invasive meningitis
+plabel = "Yearly invasive (meningitis) - average"
+seqs <- seq_along(dt$invm)
+avgcalc = tapply(dt$invm,rep(seqs,each=365)[seqs],FUN=sum) ## sum every 365 days
+gg = makeplot(plabel, seqs, avgcalc)
+gg
+
+## average annual invasive pneumonia
+plabel = "Yearly invasive (pneumonia) - average"
+seqs <- seq_along(dt$invp)
+avgcalc = tapply(dt$invp,rep(seqs,each=365)[seqs],FUN=sum) ## sum every 365 days
+gg = makeplot(plabel, seqs, avgcalc)
+gg
+
+## average annual invasive pneumonia
+plabel = "Yearly invasive (NPNM) - average"
+seqs <- seq_along(dt$invn)
+avgcalc = tapply(dt$invn,rep(seqs,each=365)[seqs],FUN=sum) ## sum every 365 days
 gg = makeplot(plabel, seqs, avgcalc)
 gg
 
@@ -183,4 +217,11 @@ gg4 = ggplot(data = dt) + geom_line(aes(x = 1:t, y = cumsum(inv))) +
 
 multiplot(gg1, gg2, gg3, gg4, cols=2)
 dev.off()
+
+
+
+#costs = fread("costs.dat")
+
+
+
 
