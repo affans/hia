@@ -76,3 +76,43 @@ function B(i)
 end
 
 
+
+hosts = @parallel for i=1:96
+    println(run(`hostname`))
+end
+
+
+#http://white.ucc.asn.au/2017/08/17/starting-workers.html
+@eval Base.Distributed import Base.warn_once
+addprocs([("node001", 32), ("node002", 32), ("node003", 32), ("node004", 32), ("node006", 32)])
+
+addprocs([("node001", 32), ("node002", 32), ("node003", 32), ("node004", 32)])
+addprocs([("node001", 32)])
+
+open("sherlock", "w") do f
+    for host in [string("node", lpad(i, 3, 0)) for i = 10:15]
+        for i = 1:32
+            write(f, "$host\n")
+        end
+    end       
+end
+## GPU kernels
+#http://mikeinnes.github.io/2017/08/24/cudanative.html
+
+
+#http://www.stochasticlifestyle.com/multi-node-parallelism-in-julia-on-an-hpc/
+## a possible slurm script
+        #!/bin/bash
+        #SBATCH -A <account>
+        #SBATCH --job-name="juliaTest"
+        #SBATCH --output="juliaTest.%j.%N.out"
+        #SBATCH --partition=compute
+        #SBATCH --nodes=8
+        #SBATCH --export=ALL
+        #SBATCH --ntasks-per-node=24
+        #SBATCH -t 01:00:00
+        export SLURM_NODEFILE=`generate_pbs_nodefile`
+        ./julia --machinefile $SLURM_NODEFILE /home/crackauc/test.jl
+
+# some more slurm scripts
+#https://github.com/iancze/ParallelTest.jl

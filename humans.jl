@@ -18,6 +18,7 @@ mutable struct Human{T <: Integer}
     statetime::T          ## maximum amount of days spent in health status 
     age::T                ## age in days  - 365 days per year
     expectancy::T         ## life expectancy - however death is checked every year against a distribution
+    expectancyreduced::T  ## if invasive, expectancy is reduced by this amount IN YEARS.. 0 means no reduction
     agegroup_beta::T      ## - NOT the jackson contact matrix group.
     gender::GENDER        ## gender - 50% male/female
     meetcnt::T            ## total meet count. how many times this person has met someone else.    
@@ -40,12 +41,16 @@ mutable struct Human{T <: Integer}
            symcnt = 0,
            invcnt = 0, deadcnt = 0, sickfrom = 0,
            timeinstate = 0, statetime = typemax(Int64), 
-           age = 0, expectancy=0, agegroup_beta = 0, gender = MALE,
+           age = 0, expectancy=0, expectancyreduced=0, 
+           agegroup_beta = 0, 
+           gender = MALE,
            meetcnt = 0, 
            pvaccine = false, bvaccine = false,
            dosesgiven = 0, 
            vaccineexpirytime = 0) = new(id, health, swap, path, invtype, invdeath, plvl, latcnt, carcnt, symcnt, invcnt, deadcnt, sickfrom, timeinstate, statetime, age, expectancy, agegroup_beta, gender, meetcnt, pvaccine, bvaccine, dosesgiven, vaccineexpirytime) 
 end
+
+
 
 function initialize(h::Array{Human{Int64}},P::HiaParameters)
     for i = 1:P.gridsize
@@ -63,7 +68,7 @@ function demographics(h::Array{Human{Int64}}, P::HiaParameters)
         ageyear = ageyear - 1 ## since distribution is 1-based
         x.age =  min(rand(ageyear*365:ageyear*365 + 365), 85*365)   ## convert to days // capped at 85 years old.. 
         x.agegroup_beta = beta_agegroup(x.age)
-        ddist = distribution_death(x.age)
+        ddist = distribution_expectancy(x.age)
         ## everyone has an expectancy
         x.expectancy = x.age + rand(ddist)*365 ## convert to days
         x.gender = rand() < 0.5 ? FEMALE : MALE
@@ -71,7 +76,6 @@ function demographics(h::Array{Human{Int64}}, P::HiaParameters)
     end
     return nothing
 end
-
 
 function newborn(h::Human)
     ## make a human "born" by setting its values to defaults.
@@ -89,7 +93,8 @@ function newborn(h::Human)
     h.timeinstate = 0
     h.statetime = typemax(Int64) 
     h.age = 0
-    h.expectancy = rand(distribution_death(0))*365 ## convert to days
+    h.expectancy = rand(distribution_expectancy(0))*365 ## convert to days
+    h.expectancyreduced = 0 
     h.agegroup_beta = beta_agegroup(0)
     h.gender = rand() < 0.5 ? FEMALE : MALE
     h.meetcnt = 0
@@ -107,7 +112,7 @@ function app(h::Human, P::HiaParameters)
 
     # check at a yearly level for death, new protection level, and recalculate agegroup_beta
     if mod(tage, 365) == 0
-        if tage == 1825  
+        if tage == 1825  ## and year 5, check if protection needs to be changed.
             h.plvl = protection(h)
         end
         # every year, recalculate agegroup
@@ -115,9 +120,10 @@ function app(h::Human, P::HiaParameters)
 
         # every year, check for death
         ageyears = Int(tage/365)
-        if rand() < distribution_ageofdeath(ageyears, h.gender)
+        eyears = Int(h.expectancy/365) ## expected years
+        ryears = eyears - h.expectancyreduced
+        if rand() < distribution_ageofdeath(ageyears, h.gender) || ageyears >= ryears
             h.swap = DEAD  ##swap to natural death
-            h.deadcnt += 1
             ##newborn(h) 
         end
         
@@ -169,31 +175,42 @@ function dailycontact(x::Human, P::HiaParameters, ag1, ag2, ag3, ag4, newborns, 
     rn = rand()
     ag = jackson_agegroup(x.age) ## determine the Jackson agegroup 
     ## determine which row they are in for Jackson contact matrix       
+    
+    ## pick a random number from the correct distribution    
     if ag == 1 
-        dist = ag1
+        agtocontact = rand(ag1)
     elseif ag == 2 
-        dist = ag2
+        agtocontact = rand(ag2)
     elseif ag == 3
-        dist = ag3
+        agtocontact = rand(ag3)
     else 
-        dist = ag4
+        agtocontact = rand(ag4)
     end  
-    agtocontact = rand(dist) ## pick a random number from the distribution
+    
     if agtocontact == 1
-        x_rnd = length(newborns) != 0 ? rand(newborns) : 0
+        if length(newborns) == 0 
+            return nothing
+        end
+        x_rnd = rand(newborns)
     elseif agtocontact == 2
-        x_rnd = length(first) != 0 ? rand(first) : 0         
+        if length(first) == 0 
+            return nothing
+        end
+        x_rnd = rand(first)
     elseif agtocontact == 3
-        x_rnd = length(second) != 0 ? rand(second) : 0            
+        if length(second) == 0 
+            return nothing
+        end
+        x_rnd = rand(second) 
     elseif agtocontact == 4
-        x_rnd = length(third) != 0 ? rand(third) : 0        
+        if length(third) == 0 
+            return nothing
+        end
+        x_rnd = rand(third)
     else
-        error("cant happen")
+        error("Hia Model => dailycontact() has agtocontact != 1, 2, 3, 4")
     end        
-    ## at this point, human x and randhuman are going to contact each other.        
-    if x_rnd == 0 
-        return nothing
-    end
+
     ## check if transmission criteria is satisfied
     t = (x.health == SUSC || x.health == REC) && (x_rnd.health == CAR || x_rnd.health == SYMP)
     y = (x_rnd.health == SUSC || x_rnd.health == REC) && (x.health == CAR || x.health == SYMP)  

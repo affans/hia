@@ -10,6 +10,7 @@ using JLD2
 using FileIO
 #using Gadfly
 #using Profile
+#using ProfileView
 
 
 include("parameters.jl")
@@ -23,6 +24,7 @@ include("costs.jl")
 ## HI - lots of information -  link: http://antimicrobe.org/b67.asp#t3a
 
 function setuphumans(simid::Int64, P::HiaParameters, M::ModelParameters)
+    ## To do: strong type return this...
     ## This function sets up the humans either by initializing them as new humans, or by reading serial files.  
     if M.initializenew 
         humans = Array{Human{Int64}}(P.gridsize);    
@@ -116,3 +118,27 @@ function sim(simid::Int64, P::HiaParameters, M::ModelParameters, cb)
     
 end
 
+
+
+function benchmark()
+    # Setup code goes here.
+    P = HiaParameters(simtime = 365*5)
+    M = ModelParameters(numofsims = 2, initializenew = true, vaccineon=false, savejld=true)
+    
+    # Run once, to force compilation.
+    println("======================= First run:")
+    @time a = sim(1, P, M, x->1);
+    
+    # Run a second time, with profiling.
+    println("\n\n======================= Second run:")
+    Profile.init(delay=0.01)
+    Profile.clear()
+    #clear_malloc_data()
+    @profile @time b = sim(1, P, M, x->1);
+    #ProfileView.view()
+    # Write profile results to profile.bin.
+    r = Profile.retrieve()
+    f = open("profile.bin", "w")
+    serialize(f, r)
+    close(f)
+  end

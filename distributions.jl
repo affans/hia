@@ -108,7 +108,7 @@ function distribution_age()
 end
 
 
-function distribution_death(a::Int64)
+function distribution_expectancy(a::Int64)
     r = nothing
     @match a begin
         0:365       => r = Binomial(100000,	0.000718)

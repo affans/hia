@@ -12,7 +12,7 @@
     numofsims::Int64 = 50           ## how much sims to run
     numofprocessors::Int64 = 50     ## number of processors to use    
     savejld::Bool = true            ## whether we should save files at the end of simulation. 
-    readloc::String  = "./serial/"    #serialfolder in the form of "{dir}/"
+    readloc::String  = "./aug31/serial/"    #serialfolder in the form of "{dir}/"
     writeloc::String = "./serial/"   #serialfolder in the form of "{dir}/"
     vaccineon::Bool = true
 end
@@ -31,8 +31,8 @@ end
     # betathree::Float64 = 0.0426  ## 5-10, 60+
     # betafour::Float64 = 0.0699   ## 10-60
 
-    betaone::Float64 = 0.0792    ## 0-2
-    betatwo::Float64 = 0.0546    ##  2-5
+    betaone::Float64 = 0.0793    ## 0-2
+    betatwo::Float64 = 0.0545    ##  2-5
     betathree::Float64 = 0.0491  ## 5-10, 60+
     betafour::Float64 = 0.0799   ## 10-60
     
@@ -99,6 +99,12 @@ end
 
     #death due to disease. 
     casefatalityratio::Float64 = 0.091 ## case fatality ratios
+
+    ## lifetime reduction 
+    lfreducemajormin = 2 ##
+    lfreducemajormax = 10    
+    lfreduceminormin = 2
+    lfreduceminormax = 2
 
     ## path one
     pathone_carriage_min::Float64 = 0.04

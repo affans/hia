@@ -105,7 +105,7 @@ end
   h.age = P.doseonetime
   P.primarycoverage = 1.0 ## force primary coverage
   vcc(h, P)  ## first dose given, h.vaccineexpirytime should be set.. save this value
-  tempvalue = h.vaccineexpirytime
+  tempvalue = h.vaccineexpirytime ## keep the vaccine expiry set intially set
   @test h.pvaccine == true 
   @test h.bvaccine == false
   @test h.dosesgiven == 1
@@ -143,8 +143,9 @@ end
   @test h.plvl == protection(h)
 
   ## check error if doses given > 3..
-  h.age = P.dosethreetime
-  @test_throws ErrorException vcc(h, P)  
+  ## update aug 19: check for doses given post-processing
+  #h.age = P.dosethreetime
+  #@test_throws ErrorException vcc(h, P)  
 
 
   ## its booster time, but booster is not given, check if protection and vaccine expiry time are correct
@@ -167,7 +168,7 @@ end
   vcc(h, P) 
   @test h.pvaccine == true 
   @test h.bvaccine == true
-  @test h.dosesgiven == 3
+  @test h.dosesgiven == 4
   @test h.plvl >= 0.85 && h.plvl <= 0.95
   @test h.vaccineexpirytime != tempvalue
   @test h.vaccineexpirytime >= (h.age + (6*365)) &&  h.vaccineexpirytime <= (h.age + (10*365))

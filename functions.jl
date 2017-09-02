@@ -89,7 +89,7 @@ function pathtaken(oldhealth::HEALTH, h::Human)
             return 3
         elseif h.dosesgiven == 3 && h.age < h.vaccineexpirytime && h.bvaccine == false
             return 4
-        elseif h.dosesgiven == 3 && h.age < h.vaccineexpirytime && h.bvaccine == true
+        elseif h.dosesgiven == 4 && h.age < h.vaccineexpirytime && h.bvaccine == true
             return 5
         else # vaccine induced time has expired. 
             return 7 
@@ -119,7 +119,7 @@ function protection(h::Human)
                     r = 0.80
                 elseif h.dosesgiven == 3 && h.age < h.vaccineexpirytime && h.bvaccine == false
                     r = 0.85
-                elseif h.dosesgiven == 3 && h.age < h.vaccineexpirytime && h.bvaccine == true
+                elseif h.dosesgiven == 4 && h.age < h.vaccineexpirytime && h.bvaccine == true
                     r = rand()*(0.95 - 0.85)+0.85
                 else # vaccine induced time has expired. 
                     r = 0.5 
