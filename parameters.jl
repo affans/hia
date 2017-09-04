@@ -101,10 +101,11 @@ end
     casefatalityratio::Float64 = 0.091 ## case fatality ratios
 
     ## lifetime reduction 
+    lfreductiononoff = 1
     lfreducemajormin = 2 ##
     lfreducemajormax = 10    
-    lfreduceminormin = 2
-    lfreduceminormax = 2
+    lfreduceminormin = 0
+    lfreduceminormax = 5
 
     ## path one
     pathone_carriage_min::Float64 = 0.04

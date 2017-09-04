@@ -311,6 +311,21 @@ function beta_agegroup(age::Integer)
     end
 end
 
+function lifetime_reduction(invtype::Integer, P::HiaParameters)
+    ## determine if this person will have their life reduced
+    st = 0
+    if P.lfreductiononoff == 0 
+        return st
+    else
+        @match invtype begin
+            1:7         => st = rand(P.lfreducemajormin:P.lfreducemajormax)
+            8:14        => st = rand(P.lfreduceminormin:P.lfreduceminormax) 
+            _           => st = 0
+        end
+        st
+    end   
+end
+
 function insertrandom(h::Array{Human{Int64}}, P::HiaParameters)
     i = rand(1:P.gridsize) ## select a random human
     # set the swap and run the update function manually

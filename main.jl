@@ -50,7 +50,7 @@ function sim(simid::Int64, P::HiaParameters, M::ModelParameters, cb)
     ## data collection variables.
     #DC = DataCollection(P.simtime)
     costs = DataFrame(ID = Int64[], age = Int64[], systime = Int64[], health = Int64[], phys = Int64[], hosp = Int64[], med = Int64[], major = Int64[], minor = Int64[])
-    dcc = DataFrame(systime = Int64[], ID = Int64[], age = Int64[], agegroup = Int64[], health = Int64[], sickfrom = Int64[],  invtype = Int64[], invdeath = Bool[], expectancy = Int64[])
+    dcc = DataFrame(systime = Int64[], ID = Int64[], age = Int64[], agegroup = Int64[], health = Int64[], sickfrom = Int64[],  invtype = Int64[], invdeath = Bool[], expectancy = Int64[], expectancyreduced = Int64[])
     vac = DataFrame(systime = Int64[], ID = Int64[], age = Int64[], dose = Int64[])
 
     ## get the distributions for contact strcuture to pass to dailycontact()
@@ -99,7 +99,7 @@ function sim(simid::Int64, P::HiaParameters, M::ModelParameters, cb)
                 if humans[i].health != SUSC  ## dont add in data collection if the person has become susceptible again.
                     ## we potentially remove million of rows by not having this transition recorded.
                     ttmp = [time, humans[i].id, humans[i].age, humans[i].agegroup_beta, Int(humans[i].health), humans[i].sickfrom,
-                            humans[i].invtype, humans[i].invdeath, humans[i].expectancy]
+                            humans[i].invtype, humans[i].invdeath, humans[i].expectancy, humans[i].expectancyreduced]
                     push!(dcc, ttmp)
                 end                    
             end

@@ -354,7 +354,6 @@ end
   h.timeinstate = h.statetime; tpp(h, P); swap(h, P); h.swap = UNDEF 
   @test h.health == SUSC; @test h.path == 0; @test h.plvl != 0.0;
 
-
   ## turning latent -> invasive (with invasive death on) -> DEAD
   humans = setuphumans(1, P, M)
   h = humans[1]
@@ -377,9 +376,7 @@ end
   h.timeinstate = h.statetime; tpp(h, P); 
   @test h.swap == DEAD
   swap(h, P); h.swap = UNDEF 
-  @test h.health == SUSC; ## swap function should reset to a "newborn"
-  
-  
+  @test h.health == SUSC; ## swap function should reset to a "newborn"  
 
   ## turning latent -> invasive (with invasive death off, force meningitis)
   humans = setuphumans(1, P, M)  ## get a fresh population
@@ -451,8 +448,36 @@ end
   ## check specific properties
   @test h.invdeath == false
   @test h.invtype == NPNM
+end
 
+@testset "Functions" begin
+  P = HiaParameters()
+  M = ModelParameters()
+  M.initializenew = true
+  humans = setuphumans(1, P, M)
 
+  ## turn of life reduction, reduction should always be 0
+  P.lfreductiononoff = 0
+  @test lifetime_reduction(-1, P) == 0
+  @test lifetime_reduction(0, P) == 0
+  @test lifetime_reduction(1, P) == 0
+  @test lifetime_reduction(7, P) == 0
+  @test lifetime_reduction(14, P) == 0
+  @test lifetime_reduction(15, P) == 0
+  @test lifetime_reduction(10000, P) == 0
+  
+  P.lfreductiononoff = 1
+  @test lifetime_reduction(-1, P) == 0
+  @test lifetime_reduction(0, P) == 0
+  @test lifetime_reduction(1, P) > 0
+  @test lifetime_reduction(7, P) > 0
+  @test lifetime_reduction(8, P) >= 0
+  @test lifetime_reduction(15, P) == 0
+  @test lifetime_reduction(10000, P) == 0
+  
+  
+  
+  
 end
 
 

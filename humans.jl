@@ -47,7 +47,7 @@ mutable struct Human{T <: Integer}
            meetcnt = 0, 
            pvaccine = false, bvaccine = false,
            dosesgiven = 0, 
-           vaccineexpirytime = 0) = new(id, health, swap, path, invtype, invdeath, plvl, latcnt, carcnt, symcnt, invcnt, deadcnt, sickfrom, timeinstate, statetime, age, expectancy, agegroup_beta, gender, meetcnt, pvaccine, bvaccine, dosesgiven, vaccineexpirytime) 
+           vaccineexpirytime = 0) = new(id, health, swap, path, invtype, invdeath, plvl, latcnt, carcnt, symcnt, invcnt, deadcnt, sickfrom, timeinstate, statetime, age, expectancy, expectancyreduced, agegroup_beta, gender, meetcnt, pvaccine, bvaccine, dosesgiven, vaccineexpirytime) 
 end
 
 
@@ -120,7 +120,7 @@ function app(h::Human, P::HiaParameters)
 
         # every year, check for death
         ageyears = Int(tage/365)
-        eyears = Int(h.expectancy/365) ## expected years
+        eyears = Int(round(h.expectancy/365, 0)) ## expected years
         ryears = eyears - h.expectancyreduced
         if rand() < distribution_ageofdeath(ageyears, h.gender) || ageyears >= ryears
             h.swap = DEAD  ##swap to natural death
@@ -242,17 +242,20 @@ function swap(h::Human, P::HiaParameters)
         ## they are swapping to INV.. check if they will die using case fatality ratio
         ## couple of things must happen: x.invdeath && x.invtype must be set accordingly.
         ## if invdeath == T, then invtype == NOINV (since this is the default value)
-        ## if invdeath == F, then invtype == Integer 1 - 4 (since this is the default value)
+        ## if invdeath == F, then invtype == Integer
         
         h.invdeath = rand() < P.casefatalityratio ? true : false
         if h.invdeath == false 
             ## not dying, check what kind of invasive they will be. 
             id = rand(Categorical([P.prob_invas_men, P.prob_invas_pneu, P.prob_invas_npnm]))
-            if id == 1
-                td = distribution_sequlae(P)            
+            if id == 1 #they will have meningitis
+                ## check whether it will be major or minor.
+                td = distribution_sequlae(P)  ## categorical RV with 15 elements           
                 h.invtype = INVSEQ(rand(td))  
                 ## make sure the ENUM integer values and the CATEGORICAL order sequence matches.
                 ## enum value 16/17 correspond to pneu/npnm but they will never be returned from a 15 element categorical array                
+                h.expectancyreduced = lifetime_reduction(Int(h.invtype), P)
+                
             elseif id == 2
                 h.invtype = PNEU
             elseif id == 3                
