@@ -30,7 +30,7 @@ info("lumberjack process started up, starting repl")
 
 info("adding procs...")
 @eval Base.Distributed import Base.warn_once
-addprocs([("node001", 32), ("node002", 32), ("node003", 32), ("node004", 32), ("node005", 32), ("node006", 32), ("node007", 32),("node008", 32), ("node010", 32),("node011", 32),("node012", 32),("node013", 32),("node014", 32),("node015", 32),("node016", 32),("node017", 32)])
+addprocs([("node001", 32), ("node002", 32), ("node003", 32), ("node004", 32), ("node005", 32), ("node006", 32), ("node007", 32),("node008", 32), ("node010", 32),("node011", 32),("node012", 32),("node013", 32),("node014", 32),("node015", 32),("node016", 32),("node017", 32), ("node018", 32)])
 
 info("starting @everywhere include process...")
 @everywhere include("main.jl")
@@ -54,7 +54,7 @@ function printmodel(P::HiaParameters, M::ModelParameters)
     info("savejld is set to false, will not save jld files")
     info("read location is set to $(M.readloc)")
   else 
-    info("savejld is set to true, will not save jld files")
+    info("savejld is set to true, will save jld files")
     info("write location is set to $(M.writeloc)")
   end
 
@@ -72,10 +72,12 @@ function seed()
   info("starting seed...")
   info("total number of processors setup: $(nprocs())") 
   info("setting up Hia and Model parameters...")
-  @everywhere P = HiaParameters(simtime = 10*365)
-  @everywhere M = ModelParameters(numofsims = 500, initializenew = false, vaccineon=false, savejld=false)  ## start with vaccine off
-  M.writeloc = "/data/serial/"
-  M.readloc = "/data/serial/"
+
+  ## model parameters
+  @everywhere P = HiaParameters(simtime = 10*365, lfreductiononoff = 0)
+  @everywhere M = ModelParameters(initializenew = false, vaccineon=false, savejld=false)  
+  M.writeloc = "/data/sep05/serial_nolf/"
+  M.readloc  = "/data/sep05/serial_nolf/"
 
   filestructure(P, M)
   printmodel(P, M)
@@ -113,7 +115,7 @@ function seed()
       writetable("vac.dat", vcat(vac))
       info("...finished!")  
   end
-  return rs
+  return nothing
 end
-r = seed()
+r = seed();
 

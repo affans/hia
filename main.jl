@@ -60,7 +60,7 @@ function sim(simid::Int64, P::HiaParameters, M::ModelParameters, cb)
     ag3 = Categorical(mmt[3, :])
     ag4 = Categorical(mmt[4, :])
 
-    wait(remotecall(info, 1, "simulation: $simid is starting"))
+    #wait(remotecall(info, 1, "simulation: $simid is starting"))
     
     ## main time loop
     @inbounds for time = 1:ttime
@@ -112,7 +112,6 @@ function sim(simid::Int64, P::HiaParameters, M::ModelParameters, cb)
     costs[:simid] = simid
     vac[:simid] = simid
 
-    wait(remotecall(info, 1, "simulation: $simid finished"))
     #return humans, DC, costs, dcc
     return humans, costs, dcc, vac
     

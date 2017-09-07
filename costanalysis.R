@@ -18,30 +18,30 @@ lseqBy <- function(from=1, to=1000000, by=1, length.out=log10(to/from)+1) {
 }
 
 
-sdcc =  fread("./aug31/dcc_seed.dat", sep=",")
-vdcc =  fread("./aug31/dcc_vaccine.dat", sep=",")
-tdcc =  fread("./aug31/dcc_thirty.dat", sep=",")
+sdcc =  fread("./sep05/nolf/dcc_seed.dat", sep=",")
+vdcc =  fread("./sep05/nolf/dcc_vaccine.dat", sep=",")
+tdcc =  fread("./sep05/nolf/dcc_thirty.dat", sep=",")
 
-vcsts = fread("./aug31/costs_vaccine.dat", sep=",")
-tcsts = fread("./aug31/costs_thirty.dat", sep=",")
+vcsts = fread("./sep05/nolf/costs_vaccine.dat", sep=",")
+tcsts = fread("./sep05/nolf/costs_thirty.dat", sep=",")
+icsts = fread("./sep05/nolf/vac_vaccine.dat", sep=",")
 
-icsts = fread("./aug31/vac_vaccine.dat", sep=",")
 ## add vaccine cost to this table
 icsts[, price:=30]
 
 
-
-## INDIVIDUAL INFECTION CATEGORY COSTS
-
-## plot physician costs, per year, averaged over sims
+################################
+##  SINGLE COST CATEGORY  ##
+################################
+## plot costs, per year, averaged over sims
 # get sum of daily costs over all simulations
-v = vcsts[, .(total = sum(major)), by=.(systime)] 
+v = vcsts[, .(total = sum(hosp)), by=.(systime)] 
 v[, avg := round(total/500, 0)]      ## average sum over number of sims
 v[, year := ceiling(systime/365)]    ## add year 
 v = v[, .(avgtotal = sum(avg)), by=year] ## add up all the costs in one year
 
 ## repeat the same for non-vaccine
-t = tcsts[, .(total = sum(major)), by=.(systime)] 
+t = tcsts[, .(total = sum(hosp)), by=.(systime)] 
 t[, avg := round(total/500, 0)]      ## average sum over number of sims
 t[, year := ceiling(systime/365)]    ## add year 
 t = t[, .(avgtotal = sum(avg)), by=year] ## add up all the costs in one year
@@ -56,16 +56,22 @@ gg = gg + scale_color_discrete(labels = c(vac="Vaccine", novac="No Vaccine"))
 gg = gg + ggtitle("Physician Costs/Year") + xlab("Time (in years)") + ylab("Costs") + theme_minimal()
 gg = gg + labs(caption = "Costs are averaged per day, over all simulations. The avg/day costs are added up at yearly level")
 #gg = gg + scale_fill_brewer(palette = "Accent")
+gg
 
-## COST DISTRIBUTION OVER 10 YEARS
-## WITH VACCINE scenario
+
+################################
+##  COST TREND OVER YEARS     ##
+################################
+## With Vaccine Scenario Costs - trend without the vaccine adminstration costs
+## average costs per day
 v = vcsts[, .(p   = sum(phys)/500,
               h   = sum(hosp)/500, 
               m   = sum(med)/500, 
               maj = sum(major)/500, 
               min = sum(minor)/500), by=.(systime)]
-setkey(v, systime)
+setkey(v, systime) ## add a key
 v[, year := ceiling(systime/365)]    ## add year 
+## add up average costs per day over the year
 v = v[, .(p = sum(p), 
           h = sum(h), 
           m  = sum(m),
@@ -75,11 +81,12 @@ v.m = melt(v, id.vars = "year")
 gg = ggplot(v.m)
 gg = gg + geom_bar(aes(year, value, fill=variable), stat="identity", position="dodge")
 #gg = gg + scale_fill_discrete(labels = c(p="Physician", h="Hospital", m="Medivac", maj="Major", min="Minor"))
-gg = gg + ggtitle("Cost distribution over 10 years") + xlab("Time (in years)") + ylab("Costs") + theme_minimal()
-gg = gg + labs(caption = "Daily average, aggregated over 10 years")
+gg = gg + ggtitle("Cost distribution over 10 years, with vaccine program") + xlab("Time (in years)") + ylab("Costs") + theme_minimal()
+gg = gg + labs(caption = "Daily average, aggregated over 10 years, vaccine administration cost not included")
 gg = gg + scale_fill_brewer(labels = c(p="Physician", h="Hospital", m="Medivac", maj="Major", min="Minor"), palette = "Paired")
+gg
 
-## repeat the same for non-vaccine scenario
+## No-Vaccine scenario cost trend, repeat the same as above
 v = tcsts[, .(p   = sum(phys)/500,
               h   = sum(hosp)/500, 
               m   = sum(med)/500, 
@@ -96,43 +103,20 @@ v.m = melt(v, id.vars = "year")
 gg = ggplot(v.m)
 gg = gg + geom_bar(aes(year, value, fill=variable), stat="identity", position="dodge")
 #gg = gg + scale_fill_discrete(labels = c(p="Physician", h="Hospital", m="Medivac", maj="Major", min="Minor"))
-gg = gg + ggtitle("Cost distribution over 10 years") + xlab("Time (in years)") + ylab("Costs") + theme_minimal()
+gg = gg + ggtitle("Cost distribution over 10 years, without vaccine program") + xlab("Time (in years)") + ylab("Costs") + theme_minimal()
 gg = gg + labs(caption = "Daily average, aggregated over 10 years")
 gg = gg + scale_fill_brewer(labels = c(p="Physician", h="Hospital", m="Medivac", maj="Major", min="Minor"), palette = "Paired")
+gg
 
 
-
-
-###### COST PER YEAR, WITHOUT TREATMENT, NO SIM AVERAGE, RAW NUMBERS
-## this is not really good data.. we need to average them.
-
-## COSTS per time unit
-c = vcsts[, year := ceiling(systime/365)]
-c = vcsts[, .(phys = sum(phys), hosp=sum(hosp), med=sum(med), major=sum(major), minor=sum(minor)), by=year]
-c = vcsts[, .(total = sum(phys, hosp, med, minor, major)), by=year]
-
-t = tcsts[, year := ceiling(systime/365)]
-t = tcsts[, .(phys = sum(phys), hosp=sum(hosp), med=sum(med), major=sum(major), minor=sum(minor)), by=year]
-t = tcsts[, .(total = sum(phys, hosp, med, minor, major)), by=year]
-
-
-## contruct a data table merging both datasets
-ff = data.table(year = as.factor(seq(1,10)), vt = c$total, tt = t$total) 
-ff.m = melt(ff, id.vars="year")
-gg = ggplot(ff.m)
-gg = gg + geom_bar(aes(factor(year), value, fill=variable), stat="identity", position="dodge")
-gg = gg + scale_fill_discrete(labels = c(vt="Vaccine", tt="No Vaccine"))
-gg = gg + ggtitle("Costs per year: novaccine/with vaccine") + xlab("Time (in years)") + ylab("Costs") + theme_minimal()
-gg = gg + labs(caption = "ATTN: Raw cost - no averaging")
-#gg = gg + scale_fill_brewer(palette = "Accent")
-## if using scale_colour_manual, need to supply "breaks" and color "values"
-##  use scale_colour_manual if using custom colour pallete
-
-
-###### COST PER YEAR, WITH SIM AVERAGE
+#############################################
+##  TOTAL COST TREND PER YEAR (LINE PLOTS) ##
+#############################################
 ## how this works, well we calculate incidence every day. 
 ## ie, on day i, the average incidence was something
 ## so in that sense, we need the "costs" associated with that incidence
+## Differnece between this and above is that the above separates the cost categories
+
 
 ## get the total costs from the main data table 
 c = vcsts[, .(total = sum(phys, hosp, med, minor, major)), by=systime]
@@ -146,30 +130,88 @@ t = t[, avg:=total/500] ## average it per day over 500 sims
 t = t[, year := ceiling(systime/365)] ## add the year column
 t = t[, .(avgtotal = round(sum(avg), 0)), by=year] ## add up the average costs per day for the year
 
+## repeat the above steps for treatment
+i = icsts[, .(total = sum(price)), by=systime]
+i = i[, avg:=total/500] ## average it per day over 500 sims
+i = i[, year := ceiling(systime/365)] ## add the year column
+i = i[, .(avgtotal = round(sum(avg), 0)), by=year] ## add up the average costs per day for the year
+
+## alternative would be to add the averages at the day level for vaccine admin costs and direct costs
+## -> we do this below when we do the bar plots
+
 ## contruct a data table merging both datasets
-ff = data.table(year = as.factor(seq(1,10)), vac = c$avgtotal, novac = t$avgtotal) 
+ff = data.table(year = as.factor(seq(1,10)), directcosts = c$avgtotal, totalcosts = (c$avgtotal + i$avgtotal), novaccine = t$avgtotal) 
 ff.m = melt(ff, id.vars="year")
 gg = ggplot(ff.m)
 gg = gg + geom_line(aes(year, value, group=variable, color=variable))
 gg = gg + scale_color_discrete(labels = c(vac="Vaccine", novac="No Vaccine"))
-gg = gg + ggtitle("Costs per year with NO treatment") + xlab("Time (in years)") + ylab("Costs") + theme_minimal()
+gg = gg + ggtitle("Costs per year, with vaccine administration") + xlab("Time (in years)") + ylab("Costs") + theme_minimal()
 gg = gg + labs(caption = "Costs are averaged per day, over all simulations. The avg/day costs are added up at yearly level. \n Vaccine administration costs are not included")
 #gg = gg + scale_fill_brewer(palette = "Accent")
 ## if using scale_colour_manual, need to supply "breaks" and color "values"
 ##  use scale_colour_manual if using custom colour pallete
+gg
 
 
-## TREATMENT COST, PER SIMULATION, RAW NUMBER
-## can be used to check for stability in the system
+#############################################
+##  TOTAL COST TREND PER YEAR (BAR PLOTS)  ##
+#############################################
+## this is the same as above - except we do bar plots
+## also, there is a slight calculation difference. 
+## above, we calcualte daily average, aggregate over year for direct costs 
+## we do the same for the vaccine admin costs.. then we add them together at a yearly level
+## below, we add both costs (direct, vaccine) at the daily level, then aggregate to year
+## numbers should be the same, however rounding errors may creep up..
+
+## get direct hospital costs with vaccination scenario, divide by 500 to get daily average
+c = vcsts[, .(vaccine = sum(phys, hosp, med, major, minor)/500), by=systime]
+## add daily vaccine treatment costs, divide by 500 to get daily average
+i = icsts[, .(treatment = sum(price)/500), by=systime]
+## get direct hospital costs, without vaccination scenario, divide by 500 to fget daily average
+t = tcsts[, .(novaccine = sum(phys, hosp, med, major, minor)/500), by=systime]
+setkey(c, systime)
+setkey(i, systime)
+setkey(t, systime)
+tmp = merge(c, i)    ## merge the vaccine direct costs + vaccine treatment costs
+setkey(tmp, systime) ## attach a key to this new table
+ci = merge(tmp, t)   ## merge the novaccine costs
+ci[, withvaccine := round(Reduce(`+`, .SD), 0), .SDcol = c(2, 3)]
+ci[, vaccine := NULL]
+ci[, treatment := NULL]
+setkey(ci, systime)
+
+## take the above data, total costs per day, and change to costs per year
+ci = ci[, year := ceiling(systime/365)] ## add the year column
+ci = ci[, .(vt = sum(withvaccine), nt=sum(novaccine)), by=year] ## sum up all the costs at the year level
+
+## create a side by side bar plot
+## THIS IS THE SAME AS THE ABOVE "LINE PLOTS" BUT IN BAR GRAPH FORM
+ci.m = melt(ci, id.vars = "year")
+gg = ggplot(ci.m)
+gg = gg + geom_bar(aes(factor(year), value, fill=variable), stat="identity", position="dodge")
+gg = gg + scale_fill_discrete(labels = c(vt="Vaccine Scenario", nt="No Vaccine Scenario"))
+gg = gg + ggtitle("Costs Per Year") + xlab("Time (in years)") + ylab("Total Cost") + theme_minimal()
+gg = gg + labs(caption = "Costs are averaged per day, over 500 simulations. The avg/day costs are aggregated at yearly level.")
+gg = gg + scale_y_continuous(limits = c(0, 3e6), breaks=seq(0, 3e6, by=0.5e6))
+gg
+
+
+######################################
+##  RAW TREATMENT COST/SIMULATION   ##
+######################################
+## can be used to check stability in the system
+
 i = icsts[, .(tot = sum(price)), by=.(simid)]
 gg = ggplot(i)
 gg = gg + geom_line(aes(simid, tot))
 gg = gg + ggtitle("Cost of vaccine treatment, per simulation") + xlab("Simulation Number") + ylab("Costs") + theme_minimal()
 gg = gg + labs(caption = "Seems that vaccine costs over all simulations are pretty stable")
+gg
 
 
-### COSTS PER DAY/YEAR, AVERAGED OVER SIMS
-##  My idea - think this works better
+###################################
+##  CE PLANES and BOOTSTRAP      ##
+###################################
 ## get direct hospital costs with vaccination scenario, divide by 500 to get daily average
 c = vcsts[, .(vaccine = sum(phys, hosp, med, major, minor)/500), by=systime]
 ## add daily vaccine treatment costs, divide by 500 to get daily average
@@ -253,49 +295,33 @@ Rc = 150000
 b = boot(ci, computeDailyICER, R = 5000)
 
 ## plot the DT - the mean costs and mean DALYs
-gg = ggplot(DT)
 gg = ggplot()
 gg = gg + geom_point(data = DT, aes(y = cost, x = as.numeric(daly)), color="blue", alpha=0.50)
-gg = gg + geom_point(data = dtmed, aes(y = cost, x = as.numeric(daly)), alpha=0.1)
 gg = gg + scale_x_continuous(limits = c(0, 130), breaks=seq(-150, 150, by=10))
 gg = gg + scale_y_continuous(limits = c(-6e6, 0), breaks=seq(-9e6, 9e6, by=1e6))
 gg = gg + ggtitle("Cost-Effectiveness Plane") 
 gg = gg + xlab("DALY Difference") + ylab("Cost Difference") + theme_minimal()
 gg = gg + geom_vline(xintercept=0)
 gg = gg + geom_hline(yintercept=0)
+gg
 
-## print the confidence intervals
+################################
+##  Confidence Interval       ##
+################################
+## make sure bootstrap object b exists
 boot.ci(b)
 
-#gg = gg + labs(caption = "Mean Cost and Mean DALYs - each point is a bootstrap replicate of the original 500 simulations")
-## plot the raw icer 
-gg = ggplot()
-gg = gg + geom_point(aes(x=seq(1,5000), y=b$t))
-gg = gg + ggtitle("Raw values, nonparametric bootstrap") 
-gg = gg + xlab("Bootstrap sample") + ylab("ICER") + theme_minimal()
-gg = gg + labs(caption = "5000 bootstrap replicates")
-
-## plot the ICER sampling distribution
+#####################################
+##  ICER Sampling Distribution     ##
+#####################################
 gg = ggplot()
 gg = gg + geom_histogram(aes(x=b$t), binwidth=500)
 gg = gg + ggtitle("ICER Sampling Distribution of Nonparametric Bootstrap")
 gg = gg + ggtitle("Raw values, nonparametric bootstrap") 
 gg = gg + xlab("Bootstrap sample") + ylab("ICER") + theme_minimal()
 gg = gg + labs(caption = "5000 bootstrap replicates")
+gg
 
-
-## take the above data, total costs per day, and change to costs per year
-ci = ci[, year := ceiling(systime/365)] ## add the year column
-ci = ci[, .(vt = sum(withvaccine), nt=sum(novaccine)), by=year] ## sum up all the costs at the year level
-
-## create a side by side bar plot
-ci.m = melt(ci, id.vars = "year")
-gg = ggplot(ci.m)
-gg = gg + geom_bar(aes(factor(year), value, fill=variable), stat="identity", position="dodge")
-gg = gg + scale_fill_discrete(labels = c(vt="Vaccine Scenario", nt="No Vaccine Scenario"))
-gg = gg + ggtitle("Costs Per Year") + xlab("Time (in years)") + ylab("Total Cost") + theme_minimal()
-gg = gg + labs(caption = "Costs are averaged per day, over 500 simulations. The avg/day costs are aggregated at yearly level.")
-gg = gg + scale_y_continuous(limits = c(0, 3e6), breaks=seq(0, 3e6, by=0.5e6))
 
 ## YLL/YLD CALCULATION, raw numbers 
 # --- essentially useless 
@@ -349,123 +375,31 @@ gg = gg + facet_wrap( ~ treatment)
 gg = gg + ggtitle("DALYs, all scenarios") + xlab("Time (in years)") + ylab("Value") + theme_minimal()
 
 
+## DEPRECATED CODE
+###### COST PER YEAR , WITHOUT TREATMENT, NO SIM AVERAGE, RAW NUMBERS
+## this is not really good data.. we need to average them.
+
+## COSTS per time unit
+c = vcsts[, year := ceiling(systime/365)]
+c = vcsts[, .(phys = sum(phys), hosp=sum(hosp), med=sum(med), major=sum(major), minor=sum(minor)), by=year]
+c = vcsts[, .(total = sum(phys, hosp, med, minor, major)), by=year]
+
+t = tcsts[, year := ceiling(systime/365)]
+t = tcsts[, .(phys = sum(phys), hosp=sum(hosp), med=sum(med), major=sum(major), minor=sum(minor)), by=year]
+t = tcsts[, .(total = sum(phys, hosp, med, minor, major)), by=year]
 
 
-
-### COSTS, DALYS PER SIMULATION
-## with vaccine scenario: costs -- get all costs per simulation, both direct and treatment costs
-v = vcsts
-v[, total := Reduce(`+`, .SD), .SDcol = 5:9]
-v = v[, .(direct = sum(total)), by=simid]
-
-i = icsts
-i = i[, .(treatment = sum(price)), by=simid]
-
-## set keys for merging
-setkey(v, simid)
-setkey(i, simid)
-vc = merge(i, v, all = TRUE)
-vc[is.na(vc$direct), "direct"] = 0  ## the set column to 0 if NAs are encountered
-vc[is.na(vc$treatment), "treatment"] =   0 
-vc[, vt := round(Reduce(`+`, .SD), 0), .SDcol = c(2, 3)]
-## remove unneccessory columns
-vc[, treatment:=NULL]
-vc[, direct:=NULL]
-
-# no vaccine costs 
-## now do no vaccine scenario
-tc = tcsts
-tc[, total := Reduce(`+`, .SD), .SDcol = 5:9]
-tc = tc[, .(nt = sum(total)), by=simid]
-
-
-##with vaccine scenario: YLLs -- get all years of life lost 
-vyll = vdcc[invdeath == "true"]
-vyll[, L := (expectancy - age)/365 ]         # get remaining life in years
-vyll[, YLL := (1/0.03)*(1 - exp(-0.03*L))]   # discount the years by 3%
-vyll = vyll[, .(yll = sum(YLL)), by=simid]  # all the years lost to life per simulation
-
-weights  = c(0.469, 0.099, 0.223, 0.388, 0.223, 0.359, 0.627)
-vyld = vdcc[health == 5 & invtype %in% seq(1, 7)]
-vyld[, w := weights[invtype]]
-vyld[, L := (expectancy - age)/365 ]
-vyld[, YLD := w*(1/0.03)*(1 - exp(-0.03*L))]
-vyld = vyld[, .(yld = sum(YLD)), by=simid] # all the years lost to disability per simulation
-
-
-##without vaccine scenario: YLLs -- get all years of life lost 
-tyll = tdcc[invdeath == "true"]
-tyll[, L := (expectancy - age)/365 ]         # get remaining life in years
-tyll[, YLL := (1/0.03)*(1 - exp(-0.03*L))]   # discount the years by 3%
-tyll = tyll[, .(yll = sum(YLL)), by=simid]  # all the years lost to life per simulation
-
-weights  = c(0.469, 0.099, 0.223, 0.388, 0.223, 0.359, 0.627)
-tyld = tdcc[health == 5 & invtype %in% seq(1, 7)]
-tyld[, w := weights[invtype]]
-tyld[, L := (expectancy - age)/365 ]
-tyld[, YLD := w*(1/0.03)*(1 - exp(-0.03*L))]
-tyld = tyld[, .(yld = sum(YLD)), by=simid] # all the years lost to disability per simulation
-
-## we need to append them with all simulations
-df = data.table(simid = seq(1, 500))
-setkey(df, simid)
-setkey(vc, simid)
-setkey(tc, simid)
-setkey(vyll, simid)
-setkey(tyll, simid)
-setkey(vyld, simid)
-setkey(tyld, simid)
-
-
-df = merge(df, vc, all.x = TRUE)
-df = merge(df, tc, all.x = TRUE)
-df = merge(df, vyll, all.x = TRUE)
-df = merge(df, vyld, all.x = TRUE)
-df = merge(df, tyll, all.x = TRUE)
-df = merge(df, tyld, all.x = TRUE)
-
-df[, daly.x := round((yll.x + yld.x), 0)]
-df[, daly.y := round((yll.y + yld.y), 0)]
-
-df[is.na(df$vt), "vt"] = 0
-df[is.na(df$vt), "nt"] = 0
-df[is.na(df$daly.x)] = 0
-df[is.na(df$daly.y)] = 0
-
-DT <<- data.table(
-  cost = integer(),
-  daly = character()
-)
-
-computerICER <- function(x, i){
-  #print(x)
-  mvc = mean(x[i, vt])
-  mnc = mean(x[i, nt])
-  mvd = mean(x[i, daly.x])
-  mnd = mean(x[i, daly.y])
-  costdiff = mvc-mnc
-  dalydiff = mvd-mnd
-  DT <<- rbind(DT, list(costdiff, dalydiff))
-  return(costdiff/dalydiff)
-}
-b = boot(df, computerICER, R = 1000)
-
-## plot the DT - the mean costs and mean DALYs
-gg = ggplot(DT)
-gg = gg + geom_point(aes(y = cost, x = as.numeric(daly)))
-gg = gg + scale_x_continuous(limits = c(-150, 150), breaks=seq(-150, 150, by=75))
-gg = gg + scale_y_continuous(limits = c(-10e6, 10e6), breaks=seq(-9e6, 9e6, by=3e6))
-gg = gg + ggtitle("Mean Costs/Mean DALYs") + xlab("Mean Effectiveness") + ylab("Mean Cost") + theme_minimal()
-gg = gg + geom_vline(xintercept=0)
-gg = gg + geom_hline(yintercept=0)
-gg = gg + labs(caption = "Mean Cost and Mean DALYs - each point is a bootstrap replicate of the original 500 simulations")
-
-## plot the icer distribution
-gg = ggplot()
-gg = gg + geom_point(aes(x=seq(1,1000), y=b$t))
-gg = gg + ggtitle("Bootstrap Replicate") + xlab("Mean Effectiveness") + ylab("ICER") + theme_minimal()
-gg = gg + labs(caption = "1000 bootstrap replicates")
-
+## contruct a data table merging both datasets
+ff = data.table(year = as.factor(seq(1,10)), vt = c$total, tt = t$total) 
+ff.m = melt(ff, id.vars="year")
+gg = ggplot(ff.m)
+gg = gg + geom_bar(aes(factor(year), value, fill=variable), stat="identity", position="dodge")
+gg = gg + scale_fill_discrete(labels = c(vt="Vaccine", tt="No Vaccine"))
+gg = gg + ggtitle("Costs per year: novaccine/with vaccine") + xlab("Time (in years)") + ylab("Costs") + theme_minimal()
+gg = gg + labs(caption = "ATTN: Raw cost - no averaging")
+#gg = gg + scale_fill_brewer(palette = "Accent")
+## if using scale_colour_manual, need to supply "breaks" and color "values"
+##  use scale_colour_manual if using custom colour pallete
 
 
 

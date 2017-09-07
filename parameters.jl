@@ -9,7 +9,7 @@
 ## main system parameters
 @with_kw type ModelParameters 
     initializenew::Bool = true      ## are we initializing a new population or reading old JLD serialized data.
-    numofsims::Int64 = 50           ## how much sims to run
+    numofsims::Int64 = 500           ## how much sims to run
     numofprocessors::Int64 = 50     ## number of processors to use    
     savejld::Bool = true            ## whether we should save files at the end of simulation. 
     readloc::String  = "./aug31/serial/"    #serialfolder in the form of "{dir}/"
@@ -23,19 +23,23 @@ end
     simtime = 365         ## time of simulation 40 years in days
     gridsize = 100000      ## size of population 
     inital_latent = 1     ## initial prevalence    
-    vaccinetime = 0       ## years (in days) added on top of simtime
     
-    ## four betas, corresponding to CDC (U shaped incidence data) age groups. 
-    # betaone::Float64 = 0.0723    ## 0-2
-    # betatwo::Float64 = 0.0527    ##  2-5
-    # betathree::Float64 = 0.0426  ## 5-10, 60+
-    # betafour::Float64 = 0.0699   ## 10-60
-
+    ## four betas, corresponding to CDC (U shaped incidence data) age groups.     
+    ## no lifetime betas
+    #betaone::Float64 = 0.0793    ## 0-2
+    #betatwo::Float64 = 0.054505    ##  2-5
+    #betathree::Float64 = 0.0491  ## 5-10, 60+
+    #betafour::Float64 = 0.0799   ## 10-60
+    
+   
+    ## lifetime reduction on.. ag1 mean 5.2
     betaone::Float64 = 0.0793    ## 0-2
-    betatwo::Float64 = 0.0545    ##  2-5
+    betatwo::Float64 = 0.05445    ##  2-5
     betathree::Float64 = 0.0491  ## 5-10, 60+
     betafour::Float64 = 0.0799   ## 10-60
     
+
+
     carriagereduction::Float64 = 0.5
     
     avgallsexlife = 71     ## average lifetime for both sex
