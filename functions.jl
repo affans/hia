@@ -319,7 +319,7 @@ function lifetime_reduction(invtype::Integer, P::HiaParameters)
     else
         @match invtype begin
             1:7         => st = rand(P.lfreducemajormin:P.lfreducemajormax)
-            8:14        => st = rand(P.lfreduceminormin:P.lfreduceminormax) 
+            #8:14        => st = 0# rand(P.lfreduceminormin:P.lfreduceminormax) 
             _           => st = 0
         end
         st

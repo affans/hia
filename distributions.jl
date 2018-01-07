@@ -107,7 +107,7 @@ function distribution_age()
     return ProbAge
 end
 
-
+"Returns the Binomial distribution associated with lifetime distribution dependent on parameter `a::Integer`"
 function distribution_expectancy(a::Int64)
     r = nothing
     @match a begin
@@ -133,8 +133,10 @@ function distribution_expectancy(a::Int64)
         32486:43800 => r = Binomial(9450,	0.000666667)
         _           => error("Hia Model => age of death")
     end
+    return r
 end
 
+"Returns the distribution for ageofdeath, given an age `a::Integer` and gender `g::GENDER`."
 function distribution_ageofdeath(a::Int64, g::GENDER)
     ##matlab curve fitting, 6th/4th degree polynomial...no "center of scale", "bisquare"
     rval = 0.0
@@ -158,6 +160,15 @@ function distribution_ageofdeath(a::Int64, g::GENDER)
     return rval
 end
 
+"""
+Returns the probability matrix and the cumulative probability matrix for contact behaviour in the model. The rate matrix (below) used is from the Jackson paper:
+'''
+    con = [2.11 0.15 0.53 0.03
+    0.55 0.40 0.50 0.12
+    0.56 3.68 3.61 0.13
+    0.55 0.55 0.81 1.43]
+'''
+"""
 function distribution_contact_transitions()
     ## matrix from the Jackson paper.
     con = [2.11 0.15 0.53 0.03
@@ -174,15 +185,10 @@ function distribution_contact_transitions()
             cmat[i, j] = sum(mat[i, 1:j])
         end
     end
-    
-    
-#cummat =  [0.7482 0.8014 0.9894 1.0 
-#           0.3503 0.6051 0.9236 1.0
-#           0.0702 0.5313 0.9837 1.0
-#           0.1647 0.3293 0.5719 1.0]
     return mat, cmat
 end
 
+"Returns the distribution for developing invasive disease. The distribution is a categorical distribution built from the parameters defined in `P::HiaParameters` with keyword `prob_invas_*`."
 function distribution_sequlae(P::HiaParameters)
     m = Categorical([P.prob_invas_maj_seq_cog, P.prob_invas_maj_seq_seiz, P.prob_invas_maj_seq_hearloss, P.prob_invas_maj_seq_motor, P.prob_invas_maj_seq_visual, P.prob_invas_maj_seq_impair, P.prob_invas_maj_seq_mimpair, P.prob_invas_min_seq_cog, P.prob_invas_min_seq_seiz, P.prob_invas_min_seq_hearloss, P.prob_invas_min_seq_motor, P.prob_invas_min_seq_visual, P.prob_invas_min_seq_impair, P.prob_invas_min_seq_mimpair, 0.846])  ## the hardcoded value is the remaining probability of no sequlae
     return m

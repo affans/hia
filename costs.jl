@@ -57,7 +57,7 @@ function invasive_major(x::Human, P::HiaParameters, st)
 end
 
 function invasive_minor(x::Human, P::HiaParameters, st)
-    ## invasive disease - with major disability 
+    ## invasive disease - with minor disability 
     sys_time = Int(floor(st/365)) ## get year value
     totalphys    = 0 ## physician
     totalhosp    = 0 ## hospital cost 

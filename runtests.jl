@@ -471,7 +471,7 @@ end
   @test lifetime_reduction(0, P) == 0
   @test lifetime_reduction(1, P) > 0
   @test lifetime_reduction(7, P) > 0
-  @test lifetime_reduction(8, P) >= 0
+  @test lifetime_reduction(8, P) == 0
   @test lifetime_reduction(15, P) == 0
   @test lifetime_reduction(10000, P) == 0
   

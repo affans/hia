@@ -30,8 +30,9 @@ info("lumberjack process started up, starting repl")
 
 info("adding procs...")
 @eval Base.Distributed import Base.warn_once
-addprocs([("node001", 32), ("node002", 32), ("node003", 32), ("node004", 32), ("node005", 32), ("node006", 32), ("node007", 32),("node008", 32), ("node010", 32),("node011", 32),("node012", 32),("node013", 32),("node014", 32),("node015", 32),("node016", 32),("node017", 32), ("node018", 32)])
+addprocs([("node001", 32), ("node002", 32), ("node003", 32), ("node004", 32), ("node005", 32), ("node006", 32), ("node007", 32),("node008", 32), ("node010", 32),("node011", 32),("node012", 32),("node013", 32),("node014", 32),("node016", 32),("node017", 32), ("node018", 32)])
 
+println("added $(nworkers()) processors")
 info("starting @everywhere include process...")
 @everywhere include("main.jl")
 
@@ -74,16 +75,18 @@ function seed()
   info("setting up Hia and Model parameters...")
 
   ## model parameters
-  @everywhere P = HiaParameters(simtime = 10*365, lfreductiononoff = 0)
-  @everywhere M = ModelParameters(initializenew = false, vaccineon=false, savejld=false)  
-  M.writeloc = "/data/sep05/serial_nolf/"
-  M.readloc  = "/data/sep05/serial_nolf/"
-
+    ## when changing lfreductiononoff, MAKE SURE THE RIGHT BETAS ARE USED. 
+  @everywhere P = HiaParameters(simtime = 10*365, lfreductiononoff = 1, primarycoverage=0.77)
+  @everywhere M = ModelParameters(initializenew = false, vaccineon=true, savejld=false)  
+  M.writeloc = "/data/sep05/serial_wilf/"
+  M.readloc  = "/data/sep05/serial_wilf/"
   filestructure(P, M)
   printmodel(P, M)
   info("\n $P"); info("\n $M");
   info("starting seed pmap...")
   rs = pmap((cb, x) -> sim(x, P, M, cb), Progress(M.numofsims*P.simtime), 1:(M.numofsims), passcallback=true)
+  println("pmap finished")
+  
   info("pmap finished!")
 
   ## rs[i][1] the "human" array

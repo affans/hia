@@ -25,16 +25,17 @@ end
     inital_latent = 1     ## initial prevalence    
     
     ## four betas, corresponding to CDC (U shaped incidence data) age groups.     
+    
     ## no lifetime betas
-    #betaone::Float64 = 0.0793    ## 0-2
-    #betatwo::Float64 = 0.054505    ##  2-5
-    #betathree::Float64 = 0.0491  ## 5-10, 60+
-    #betafour::Float64 = 0.0799   ## 10-60
+    # betaone::Float64 = 0.0793    ## 0-2
+    # betatwo::Float64 = 0.054505    ##  2-5
+    # betathree::Float64 = 0.0491  ## 5-10, 60+
+    # betafour::Float64 = 0.0799   ## 10-60
     
    
-    ## lifetime reduction on.. ag1 mean 5.2
+    ## lifetime reduction on.. 
     betaone::Float64 = 0.0793    ## 0-2
-    betatwo::Float64 = 0.05445    ##  2-5
+    betatwo::Float64 = 0.05448    ##  2-5
     betathree::Float64 = 0.0491  ## 5-10, 60+
     betafour::Float64 = 0.0799   ## 10-60
     
@@ -105,11 +106,11 @@ end
     casefatalityratio::Float64 = 0.091 ## case fatality ratios
 
     ## lifetime reduction 
-    lfreductiononoff = 1
+    lfreductiononoff = 0
     lfreducemajormin = 2 ##
     lfreducemajormax = 10    
     lfreduceminormin = 0
-    lfreduceminormax = 5
+    lfreduceminormax = 0
 
     ## path one
     pathone_carriage_min::Float64 = 0.04
@@ -147,7 +148,8 @@ end
     pathseven_symptomatic::Float64 = 0.95
 
     ## vaccine parameters
-    primarycoverage::Float64 = 0.77  ## source: https://www.canada.ca/en/public-health/services/publications/healthy-living/vaccine-coverage-canadian-children-highlights-2013-childhood-national-immunization-coverage-survey.html
+    primarycoverage::Float64 = 0.77#0.77#0.90 #0.77  
+    ## source: https://www.canada.ca/en/public-health/services/publications/healthy-living/vaccine-coverage-canadian-children-highlights-2013-childhood-national-immunization-coverage-survey.html
     boostercoverage::Float64 = 0.935 ## 72/77 # source: http://healthycanadians.gc.ca/publications/healthy-living-vie-saine/immunization-coverage-children-2013-couverture-vaccinale-enfants/alt/icc-2013-cve-eng.pdf
     primarytimemin = 2*365 ## 2 years
     primarytimemax = 5*365 
