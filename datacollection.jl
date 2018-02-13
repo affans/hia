@@ -1,5 +1,5 @@
-type DataCollection  ## data collection type.
-    
+"DataCollection Type Structure. Contains the Array{MaxTime} for different categories of data collection"
+type DataCollection  ## data collection type.    
     ## daily data (broken down by agegroup, aggregated patient)
     lat::Array{Int64}
     car::Array{Int64}
@@ -25,11 +25,12 @@ type DataCollection  ## data collection type.
                                     zeros(Int64, size, 5))        #invN                                    
 end
 
+"""
+    collectdaily(x::Human, DC::DataCollection, time)
 
-
+Collect information about the `x` human in the DC datacollection structure. x is human type, but cant declare it yet because include("humans.jl") runs after, so the Human type isnt defined yet.
+"""
 function collectdaily(x, DC::DataCollection, time)
-    ## x is human type, but cant declare it yet because include("humans.jl") runs after, so the Human type isnt defined yet.
-
     ## unpack datacollection vectors  -- these are multidimensional vectors 
     @unpack lat, car, sym, inv, rec, deadn, deadi, invM, invP, invN = DC 
     ## collect our data
@@ -48,7 +49,6 @@ function collectdaily(x, DC::DataCollection, time)
     elseif x.swap == DEAD && x.invdeath == true
         deadi[time, x.agegroup_beta] += 1
     end  
-
 end
 
 

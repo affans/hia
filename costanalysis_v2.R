@@ -38,27 +38,36 @@ af <- function(cost, sims){
   return(list(r1 = b$t0, r2 = c$normal[2], r3 =c$normal[3]))
 }
 
+
+dataload <- function(lf = "nolf"){
+  return(0)
+}
+
 ## data load
+n_or_w = "nolf"  # no life reduction (nolf) or with life reduction (wilf)
+
 ## incidence for the first 30 years
-sdcc =  fread("./sep05/nolf/dcc_seed.dat", sep=",")
+sdcc =  fread(paste0("./sep05/", n_or_w, "/dcc_seed.dat"), sep=",")
 ##incidence with vaccine @ 77% coverage
-vdcc =  fread("./sep05/nolf/dcc_vaccine.dat", sep=",")
+vdcc =  fread(paste0("./sep05/", n_or_w, "/dcc_vaccine.dat"), sep=",")
 ##incidence with vaccine @ 90% coverage
-vdcc90 =  fread("./sep05/nolf/dcc_vaccine_90.dat", sep=",")
+vdcc90 =  fread(paste0("./sep05/", n_or_w, "/dcc_vaccine_90.dat"), sep=",")
 ##incidence with no vaccine
-tdcc =  fread("./sep05/nolf/dcc_thirty.dat", sep=",")
+tdcc =  fread(paste0("./sep05/", n_or_w, "/dcc_thirty.dat"), sep=",")
 
 ## total costs with 77% coverage
-vcsts = fread("./sep05/nolf/costs_vaccine.dat", sep=",")
+vcsts = fread(paste0("./sep05/", n_or_w, "/costs_vaccine.dat"), sep=",")
 ## total costs with 90% coverage
-vcsts90 = fread("./sep05/nolf/costs_vaccine_90.dat", sep=",")
+vcsts90 = fread(paste0("./sep05/", n_or_w, "/costs_vaccine_90.dat"), sep=",")
 ## total costs without vaccine
-tcsts = fread("./sep05/nolf/costs_thirty.dat", sep=",")
+tcsts = fread(paste0("./sep05/", n_or_w, "/costs_thirty.dat"), sep=",")
 
 ## costs of vaccination program at 77% coverage
-icsts = fread("./sep05/nolf/vac_vaccine.dat", sep=",")
+icsts = fread(paste0("./sep05/", n_or_w, "/vac_vaccine.dat"), sep=",")
 ## costs of vaccination program at 90% coverage
-icsts90 = fread("./sep05/nolf/vac_vaccine_90.dat", sep=",")
+icsts90 = fread(paste0("./sep05/", n_or_w, "/vac_vaccine_90.dat"), sep=",")
+
+
 ## add vaccine cost to this table
 icsts[, price:=30]
 icsts90[, price:=30]
@@ -68,10 +77,10 @@ icsts90[, price:=30]
 ##  SINGLE COST CATEGORY      ##
 ################################
 ## replace vcsts with tcsts/vcsts90 for other scenarios
-
 ## get daily costs, per simulation -- ie, add up all the sick humans on each day, each simulation
 v = vcsts[order(systime), .(daysimtotal = sum(hosp)), by=.(systime, simid)] 
 v = v[, year := ceiling(systime/365)] ## add the year column
+
 ## add up all the days at a yearly level, per simulation
 v = v[, .(yearsimtotal = sum(daysimtotal)), by=.(year, simid)] ## add up the average costs per day for the year
 ## average out over 500 simulations, while running bootstrapping

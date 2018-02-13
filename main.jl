@@ -1,5 +1,5 @@
 ## Haemophilus Influenza A, Agent Based Model for disease incidence 
-## Developed by Affan Shoukat, for PhD work
+## Developed by Affan Shoukat, PhD project
 
 ## import required packages
 using Parameters
@@ -16,7 +16,7 @@ using FileIO
 #using Profile
 #using ProfileView
 
-
+## include required files
 include("parameters.jl")
 include("datacollection.jl")
 include("distributions.jl")
@@ -26,7 +26,11 @@ include("functions.jl")
 include("costs.jl")
 
 
-"Sets up an array of humans, either as a fresh array or read from a .jld2 file given a simulation id"
+"""
+    statetime(simid::Int64, P::HiaParameters, M::ModelParameters)
+
+Sets up an array of humans, either as a fresh array or read from a .jld2 file given a simulation id. It creates an empty array of `P.gridsize`, initializes the array (ie. create Human() instances for each element), and runs `demographics(::Array{Human}, ::HiaParameters)`. `simid` is always required but is not used if setting up a fresh array of humans.
+"""
 function setuphumans(simid::Int64, P::HiaParameters, M::ModelParameters) 
     if M.initializenew 
         humans = Array{Human{Int64}}(P.gridsize);    
@@ -49,10 +53,10 @@ end
 
 The main simulation entry point for Hia agent-based model. 
 # Arguments
-- `simid::Integer`: The simulation ID supplied manually. It is appended on to the data tables returned.
+- `simid::Integer`: The simulation ID supplied manually. This needs to be unique for each simulation as it is appended on to the results datatables returned.
 - `P::HiaParameters`: The Hia specific parameters.
 - `M::ModelParameters`: The Model specific parameters.  
-- `cb::Function`: is the callback function from `PmapProgressMeter` to update the progress bar. Simply provide `x -> 1` to not worry about it. 
+- `cb::Function`: is the callback function from `PmapProgressMeter` to update the progress bar. Simply provide `x -> 1` if not running from `pmap`. 
 
 # Returns
   Returns a 4-tuple: (Human array at last time step, Cost datatable, incidence datatable, vaccine datatable)
@@ -98,9 +102,8 @@ function sim(simid::Int64, P::HiaParameters, M::ModelParameters, cb)
     ag3 = Categorical(mmt[3, :])
     ag4 = Categorical(mmt[4, :])
 
-
     #wait(remotecall(info, 1, "simulation: $simid is starting"))
-    
+        
     ## main time loop
     @inbounds for time = 1:ttime
         ## start of day.... split humans into bins for use with jackson agegroup contact matrix

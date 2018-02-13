@@ -1,3 +1,4 @@
+include("SlurmConnect.jl")
 using Parameters
 using Match
 using Distributions
@@ -29,8 +30,13 @@ remove_truck("console")
 info("lumberjack process started up, starting repl")
 
 info("adding procs...")
+#@eval Base.Distributed import Base.warn_once
+#addprocs([("node001", 32), ("node002", 32), ("node003", 32), ("node004", 32), ("node005", 32), ("node006", 32), ("node007", 32),("node008", 32), ("node010", 32),("node011", 32),("node012", 32),("node013", 32),("node014", 32),("node016", 32),("node017", 32), ("node018", 32)])
+
+s = SlurmManager(512)
 @eval Base.Distributed import Base.warn_once
-addprocs([("node001", 32), ("node002", 32), ("node003", 32), ("node004", 32), ("node005", 32), ("node006", 32), ("node007", 32),("node008", 32), ("node010", 32),("node011", 32),("node012", 32),("node013", 32),("node014", 32),("node016", 32),("node017", 32), ("node018", 32)])
+addprocs(s, partition="defq", N=16)
+
 
 println("added $(nworkers()) processors")
 info("starting @everywhere include process...")
@@ -78,6 +84,7 @@ function seed()
     ## when changing lfreductiononoff, MAKE SURE THE RIGHT BETAS ARE USED. 
   @everywhere P = HiaParameters(simtime = 10*365, lfreductiononoff = 1, primarycoverage=0.77)
   @everywhere M = ModelParameters(initializenew = false, vaccineon=true, savejld=false)  
+  ## if initializenew == false, seed data(ie first thirty years) must be given
   M.writeloc = "/data/sep05/serial_wilf/"
   M.readloc  = "/data/sep05/serial_wilf/"
   filestructure(P, M)

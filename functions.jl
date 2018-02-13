@@ -1,8 +1,12 @@
+"""
+    statetime(x::Human, P::HiaParameters)
+
+Returns the statetime for a particular health state. It uses their current health to determine the state time. If using to set statetime for a swap, SWAP FIRST then get statetime.    
+"""
 function statetime(x::Human, P::HiaParameters)
     ## this returns the statetime for everystate..
     ## it uses their CURRENT HEALTH.. 
-    ## so if using for swap purposes, SWAP FIRST then get statetime. 
-   
+    ##
     r = 0 ## return variable
     @match Symbol(x.health) begin
         :SUSC  => r = typemax(Int64)  ## no expiry for suscepitble

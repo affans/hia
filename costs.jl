@@ -113,7 +113,7 @@ function invasive_minor(x::Human, P::HiaParameters, st)
             totalseqmin = D
         end        
     end
-    return Int(round(totalphys)), Int(round(totalhosp)), Int(round(totalmed)), Int(round(totalseqmaj)), Int(round(totalseqmin))
+    return Int(round(totalhosp)), Int(round(totalmed)), Int(round(totalseqmin))
 end
 
 function collectcosts(x::Human, P::HiaParameters, st::Int64)
@@ -140,4 +140,53 @@ function collectcosts(x::Human, P::HiaParameters, st::Int64)
     end   
     ## physician/hospital/medivac/major/minor
     return 0, 0, 0, 0, 0
+end
+
+function collectcoststwo()
+    totalphys    = 0 ## physician
+    totalhosp    = 0 ## hospital cost 
+    totalmed     = 0 ## medivac cost   
+    totalseqmaj  = 0 ## sequlae cost 
+    totalseqmin  = 0 ## sequlae cost 
+
+    if x.health == SYMP
+        totalphys = P.cost_physicianvisit
+    elseif x.health == INV
+        if x.invdeath == true 
+            totalhosp = hospitalcost(x, P) * x.statetime  ## total hospital
+            if x.agegroup_beta == 1 
+                totalmed = P.cost_medivac
+            end
+        else 
+            ## invdeath == false, so invtype must be set
+            if x.invtype != MENNOSEQ && x.invtype != PNEU && x.invtype != NPNM
+                s = string(x.invtype)[(end - 2):end]
+                if s == "MAJ"
+                    ## how much money is needed today to cover their future hospital cost
+                    totalhosp = hospitalcost(x, P) * x.statetime  ##                     
+                    ## disability major is a yearly cost until death.. use their expectancy to figure this out
+                    agediff = Int(floor((x.expectancy - x.age)/365))     ## in terms of years.
+                    ## the cost of major sequlae is 109664/year..    
+                    totalseqmaj = sum([P.cost_meningitis_major/(1+P.discount_cost)^i for i=1:agediff])                    
+                    ## medivac
+                    if x.agegroup_beta == 1         
+                        totalmed = P.cost_medivac        
+                    end
+                elseif s == "MIN"
+                    ho, me, mi = invasive_minor(x, P, st)          
+                    totalhosp = ho
+                    totalmed = me
+                    totalseqmin = mi
+                else 
+                    error("Hia error => invtype is not set properly, when trying to calculate costs.")
+                end 
+            else
+                totalhosp = hospitalcost(x, P) * x.statetime  ## total hospital
+                if x.agegroup_beta == 1 
+                    totalmed = P.cost_medivac
+                end
+            end
+        end
+    end   
+    return Int(round(totalphys)), Int(round(totalhosp)), Int(round(totalmed)), Int(round(totalseqmaj)), Int(round(totalseqmin))
 end
